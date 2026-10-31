@@ -34,19 +34,6 @@ There's no hosted version yet. Follow [Run Locally](#run-locally) below.
 To just look around without setting up a database, start the client in demo mode with
 `VITE_USE_MOCK=true`. It opens a sample room with two simulated teammates.
 
-## Known Bugs
-
-- Login and signup attempt limits are counted per server address, so behind the dev proxy everyone shares the same limit
-- Continue with Google only works on addresses added in Google Cloud (e.g. `localhost`), not on a network IP
-- Go Live doesn't work in demo mode (it needs the server)
-- Python, C, C++ and Java code isn't sandboxed yet
-
-## Future Plans
-
-- Forgot / reset password
-- Admin page to see all accounts and the login history
-- Sandbox for every language, not just JavaScript and TypeScript
-- Host a public demo
 
 ## Screenshots
 
@@ -110,22 +97,6 @@ In a second terminal, start the client
 ```
 
 Open http://localhost:5173 in your browser
-
-## Environment Variables
-
-To run this project, you will need to add the following environment variables to your `server/.env` file
-
-`MONGODB_URI`: your MongoDB connection string (e.g. `mongodb://localhost:27017/synq` or a MongoDB Atlas URL)
-
-`JWT_SECRET`: any random string of 32+ characters
-
-Optional:
-
-`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`: to send verification codes by email
-
-`GOOGLE_CLIENT_ID`: to enable Continue with Google
-
-`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`: to send codes by SMS
 
 ## Contributing
 
