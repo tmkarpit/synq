@@ -1,107 +1,140 @@
-# SYNQ
+# SYNQ (Real-time Collaborative Code Editor)
 
-A real-time collaborative code editor. Create a room, share the link, and code together in the same files with live cursors, chat and a shared terminal.
+SYNQ is a code editor that runs in the browser and lets a whole team work in the same files at
+the same time. Create a room, share the link, and everyone codes together with live cursors,
+chat, a shared terminal and one-click push to GitHub. I built it to make pair programming,
+study groups and coding interviews feel like sitting at the same desk, with no screen sharing
+and no sending files back and forth.
+
+## Tech Stack
+
+**Client:** React, Vite, Tailwind CSS, Monaco Editor, xterm.js, Zustand
+
+**Server:** Node.js, Socket.IO, Yjs, MongoDB, JWT, Nodemailer
 
 ## Features
 
-- Accounts (JWT): sign up with an emailed code, log in with a password, a one-time code by
-  email or SMS, or one click with Google; add a verified phone on the Account page
-- Live editing with everyone's cursor and selection visible
-- Suggestions as you type: VS Code's IntelliSense for JavaScript, TypeScript, HTML and CSS,
-  plus keywords, built-ins and snippets for Python, C, C++ and Java (`!` for an HTML page)
-- Rooms start empty: create, open, rename (F2) and delete files and folders like in VS Code
-- Run JavaScript, TypeScript, Python, C, C++ and Java, with output shared in one terminal
-- Go Live for HTML files (like VS Code's Live Server): the page opens at
-  `http://localhost:5173/live/...` in a new tab and follows your edits as you type. CSS
-  changes apply instantly without a reload, HTML changes patch the page in place, and
-  script changes reload it at the same scroll position. Half-typed JavaScript never breaks
-  the preview: it keeps the last working version and shows the syntax error until it's
-  fixed, and errors the page throws are shown in the same overlay
-- A real terminal: `npm install`, `node app.js`, `cd src` and more run in the room's folder
-  on the server, and the files they create or change appear for everyone
+- Real-time editing with live cursors for everyone in the room
+- VS Code–like editor with IntelliSense and snippets
+- Run JavaScript, TypeScript, Python, C, C++ and Java with shared output
+- Shared terminal (`npm install`, `node app.js` and more)
+- Go Live preview for HTML pages that updates as you type
 - Room chat and a list of who is online
-- People who open an invite link ask to join; the room owner accepts or declines them
-- The owner can remove people, make them editors or viewers, hand over ownership, and allow only themselves to create/delete files or run code
-- Read-only viewers (`?role=viewer` on the link)
-- Rooms are saved in MongoDB, so the code is still there after everyone leaves
-- Download the whole project as a .zip
-- Source Control like VS Code: see which files changed since the last push (M/A/D), write a
-  commit message and push to GitHub in one click (a new repository is created if needed)
+- Invite links, with the owner accepting or declining people
+- Editor and viewer roles, and owner-only controls
+- Push the room's code to GitHub in one click
+- Log in with password, email/SMS code or Google
+- Login history (every signup, login and logout is recorded)
+- Rooms are saved in MongoDB and can be downloaded as a `.zip`
 
-## Tech stack
+## Demo
 
-- **Client:** React, Vite, Tailwind CSS, Monaco Editor, xterm.js
-- **Server:** Node.js, Socket.IO, Yjs
-- **Database:** MongoDB (local MongoDB Community Server; browse it with MongoDB Compass)
+There's no hosted version yet. Follow [Run Locally](#run-locally) below.
 
-## Getting started
+To just look around without setting up a database, start the client in demo mode with
+`VITE_USE_MOCK=true`. It opens a sample room with two simulated teammates.
 
-You need Node.js 20 or newer and MongoDB (the MongoDB Community Server Windows service,
-or `docker compose up -d`).
+## Known Bugs
+
+- Login and signup attempt limits are counted per server address, so behind the dev proxy everyone shares the same limit
+- Continue with Google only works on addresses added in Google Cloud (e.g. `localhost`), not on a network IP
+- Go Live doesn't work in demo mode (it needs the server)
+- Python, C, C++ and Java code isn't sandboxed yet
+
+## Future Plans
+
+- Forgot / reset password
+- Admin page to see all accounts and the login history
+- Sandbox for every language, not just JavaScript and TypeScript
+- Host a public demo
+
+## Screenshots
+
+**Home Page**
+![Home Page](docs/screenshots/landing.png)
+
+**Login Page** (Google, password or a one-time code)
+![Login Page](docs/screenshots/login.png)
+
+**Start a Room** (pick your name, cursor color and room ID)
+![Start a Room](docs/screenshots/create-room.png)
+
+**Editor** (live cursors of teammates and the shared run output)
+![Editor](docs/screenshots/editor.png)
+
+**People in the Room** (who is online, their role and the file they're in)
+![People](docs/screenshots/people.png)
+
+**Room Chat**
+![Chat](docs/screenshots/chat.png)
+
+<sub>The room screenshots were taken in demo mode, so the teammates are simulated.</sub>
+
+## Run Locally
+
+Clone the project
 
 ```bash
-npm run install:all
-cp server/.env.example server/.env
+  git clone https://github.com/tmkarpit/synq
 ```
 
-Put your database URL and a secret for the login tokens (JWT) in `server/.env`:
-
-```
-MONGODB_URI=mongodb://localhost:27017/synq
-JWT_SECRET=any-random-string-of-at-least-32-characters
-```
-
-For verification codes and Google sign-in, also set (all in `server/.env`, see
-`server/.env.example`): `SMTP_*` for email (Gmail works with an app password),
-`TWILIO_*` for SMS, and `GOOGLE_CLIENT_ID` for "Continue with Google". Until then,
-`OTP_DEV_LOG=true` prints the codes in the server window (development only).
-
-The tables are created on the first start. Then run the server and the client in two
-terminals:
+Go to the project directory
 
 ```bash
-npm run dev:server                 # http://localhost:4000
-npm --prefix client run dev:lan    # http://localhost:5173
+  cd synq
 ```
 
-Open http://localhost:5173, click **Log in** (top right) to create an account, then
-create a room. Click **Invite** to copy a link for others on your network; when they
-open it, you accept or decline them from the pop-up or the People panel.
+Install dependencies (client and server)
 
-## Pushing your code to GitHub
-
-1. In a room, click **Source Control** (the branch icon on the left) and then **Publish to
-   GitHub**, or use **Push to GitHub...** in the **⋯** menu next to **Files**.
-2. The first time, click **Create a token**, create a GitHub token with the **repo**
-   permission, paste it and click **Connect**. It is saved encrypted on your account, so
-   you only do this once.
-3. Enter a repository name (`my-project`, or `owner/my-project`), optionally a branch and
-   a commit message, and click **Push**. If the repository doesn't exist yet, it is created
-   (private unless you untick **Private if new**).
-4. Use the links shown to open the repository or the commit on GitHub.
-
-After the first push, the Source Control view lists every file changed since then (M =
-modified, A = added, D = deleted) and its icon shows how many. Click a file to open it,
-type a message and press **Commit & Push** (or Ctrl+Enter). Everyone in the room sees the
-same list, and it clears after anyone's push.
-
-The repository ends up with exactly the room's files: files deleted in the room are
-deleted on GitHub too, and `node_modules` is never pushed. The room remembers the
-repository, so pushing again only takes one click. **Disconnect** in the same dialog
-removes your token.
-
-Code from Python, C, C++ and Java runs on the server machine without a sandbox, so only
-share rooms with people you trust.
-
-## Project structure
-
+```bash
+  npm run install:all
 ```
-client/   React app
-server/   Socket.IO + Yjs server
-docs/     Socket event reference
+
+Copy `server/.env.example` to `server/.env` and set the environment variables
+(at least `MONGODB_URI` and `JWT_SECRET`)
+
+```bash
+  cp server/.env.example server/.env
 ```
+
+Start the server
+
+```bash
+  npm run dev:server
+```
+
+In a second terminal, start the client
+
+```bash
+  npm --prefix client run dev:lan
+```
+
+Open http://localhost:5173 in your browser
+
+## Environment Variables
+
+To run this project, you will need to add the following environment variables to your `server/.env` file
+
+`MONGODB_URI`: your MongoDB connection string (e.g. `mongodb://localhost:27017/synq` or a MongoDB Atlas URL)
+
+`JWT_SECRET`: any random string of 32+ characters
+
+Optional:
+
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`: to send verification codes by email
+
+`GOOGLE_CLIENT_ID`: to enable Continue with Google
+
+`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`: to send codes by SMS
+
+## Contributing
+
+Contributions are always welcome!
+
+## Authors
+
+- [@tmkarpit](https://www.github.com/tmkarpit) (Arpit Tamrakar)
 
 ## License
 
-Created by - Arpit Tamrakar
-MIT
+[MIT](https://choosealicense.com/licenses/mit/)
