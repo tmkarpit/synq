@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------- tokens */
+:root {
+  /* Landing: monochrome HUD */
+  --bg: #050506;
+  --surface: #0c0d10;
+  --elevated: #14161a;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #f2f2f3;
+  --muted: #8a8f98;
+  --faint: #5b606a;
+  --accent-warm: #ff9f6b;
+  --accent-blue: #3b82f6;
+  --accent-violet: #7c5cff;
+
+  /* Workspace: SYNQ Dark Modern defaults (overwritten by applyThemeVariables) */
+  --ws-canvas: #0b0c10;
+  --ws-editor-bg: #15161c;
+  --ws-panel: #111218;
+  --ws-border: #22242d;
+  --ws-text: #d4d6dd;
+  --ws-muted: #8a8e9b;
+  --ws-accent: #7c5cff;
+  --ws-selected: #211e36;
+  --ws-hover: #1b1c24;
+  --ws-widget: #191a21;
+
+  /* The editor's right-click menu is drawn outside the editor, where Monaco's theme
+     variables do not reach: give it the workspace colors (they follow the theme). */
+  --vscode-menu-background: var(--ws-widget);
+  --vscode-menu-foreground: var(--ws-text);
+  --vscode-menu-border: var(--ws-border);
+  --vscode-menu-selectionBackground: var(--ws-accent);
+  --vscode-menu-selectionForeground: #ffffff;
+  --vscode-menu-separatorBackground: var(--ws-border);
+  --vscode-widget-shadow: rgba(0, 0, 0, 0.5);
+
+  --ease-synq: cubic-bezier(0.22, 1, 0.36, 1);
+
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ base */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    margin: 0;
+  }
+
+  ::selection {
+    background: rgba(124, 92, 255, 0.35);
+    color: #fff;
+  }
+
+  /* Visible, consistent focus ring for keyboard users only */
+  :focus-visible {
+    outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ------------------------------------------------------------ components */
+@layer components {
+  .hud {
+    @apply font-mono text-hud uppercase text-muted;
+  }
+
+  .display {
+    @apply font-display font-semibold tracking-display;
+    line-height: 0.98;
+  }
+
+  .text-gradient {
+    background: linear-gradient(180deg, #ffffff 0%, #8a8f98 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hairline {
+    border: 1px solid var(--border);
+  }
+
+  .glass {
+    background: rgba(12, 13, 16, 0.72);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+  }
+
+  /* SYNQ Studio: floating panels on the workspace canvas */
+  .ws-card {
+    background: var(--ws-panel);
+    border: 1px solid var(--ws-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.03) inset,
+      0 12px 32px -18px rgba(0, 0, 0, 0.8);
+  }
+
+  .ws-section-title {
+    @apply flex h-11 shrink-0 items-center gap-2 px-4 text-[13px] font-semibold text-ws-text;
+  }
+
+  /* Thin scrollbars inside the workspace */
+  .ws-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(121, 121, 121, 0.4) transparent;
+  }
+  .ws-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .ws-scroll::-webkit-scrollbar-thumb {
+    background: rgba(121, 121, 121, 0.4);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  .ws-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* ------------------------------------------------------------- utilities */
+@layer utilities {
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  .halftone {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1.4px);
+    background-size: 6px 6px;
+  }
+
+  .scanlines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.04) 0,
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.18);
+  }
+}
+
+/* ------------------------------------------------------- reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,15 @@
+# Optional: MongoDB in Docker, for machines without the MongoDB Windows service.
+#   docker compose up -d
+# then MONGODB_URI=mongodb://localhost:27017/synq in server/.env.
+services:
+  mongo:
+    image: mongo:8.2
+    container_name: synq-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - synq-mongo:/data/db
+    restart: unless-stopped
+
+volumes:
+  synq-mongo:

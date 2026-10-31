@@ -1,0 +1,29 @@
+{
+  "name": "synq-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SYNQ server: rooms, Yjs document sync, presence, chat and shared code runs over Socket.IO",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:db": "node --env-file-if-exists=.env --test --test-concurrency=1 \"test/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "acorn": "^8.19.0",
+    "google-auth-library": "^11.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^6.21.0",
+    "nodemailer": "^10.3.1",
+    "socket.io": "^4.8.4",
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}

@@ -1,0 +1,9 @@
+# Only the landing page is public. Rooms, login and the rooms list are private.
+User-agent: *
+Allow: /
+Disallow: /room/
+Disallow: /join
+Disallow: /login
+Disallow: /signup
+Disallow: /account
+Disallow: /api/

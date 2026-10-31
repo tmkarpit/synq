@@ -1,0 +1,84 @@
+/* Landing page only (loaded with the lazy landing route). */
+
+.landing .hero-title {
+  font-size: clamp(72px, 9.6vw, 156px);
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+}
+
+.landing .hero-word {
+  background: linear-gradient(100deg, #7c5cff 0%, #22d3ee 45%, #4ade80 75%, #facc15 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hero-word-shift 8s ease-in-out infinite alternate;
+  padding-right: 0.04em;
+}
+
+@keyframes hero-word-shift {
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* Floating nav: transparent at the top, glass once you scroll. */
+.landing-nav {
+  border: 1px solid transparent;
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    backdrop-filter 300ms ease;
+}
+
+.landing-nav.nav--scrolled {
+  background: rgba(10, 10, 13, 0.72);
+  border-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* Reduced motion: no pinning, so the feature cards wrap instead of scrolling sideways. */
+@media (prefers-reduced-motion: reduce) {
+  .landing [data-track] {
+    flex-wrap: wrap;
+    width: auto;
+    padding-inline: max(24px, calc((100vw - 1180px) / 2));
+  }
+  .landing .hero-word {
+    animation: none;
+  }
+}
+
+/* "Created by" name in the footer: a slow gradient that flows through the name. */
+.landing .creator-name {
+  background: linear-gradient(
+    100deg,
+    #a78bfa 0%,
+    #7c5cff 20%,
+    #3b82f6 40%,
+    #22d3ee 60%,
+    #f472b6 80%,
+    #a78bfa 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 6px 28px rgba(124, 92, 255, 0.35));
+  transition: filter 0.3s ease;
+}
+.landing .creator-name:hover,
+.landing .creator-name:focus-visible {
+  filter: drop-shadow(0 6px 36px rgba(34, 211, 238, 0.5));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .landing .creator-name {
+    animation: creator-flow 9s linear infinite;
+  }
+}
+@keyframes creator-flow {
+  to {
+    background-position: 250% 0;
+  }
+}
