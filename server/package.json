@@ -6,7 +6,7 @@
   "description": "SYNQ server: rooms, Yjs document sync, presence, chat and shared code runs over Socket.IO",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --env-file-if-exists=.env --watch src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch-path=src src/index.js",
     "start": "node --env-file-if-exists=.env src/index.js",
     "test": "node --test \"test/**/*.test.js\"",
     "test:db": "node --env-file-if-exists=.env --test --test-concurrency=1 \"test/**/*.test.js\""
