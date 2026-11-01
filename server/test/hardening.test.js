@@ -144,3 +144,24 @@ test('code runs cannot reach the network (import, require, getBuiltinModule, fet
   await runJavaScript({ code: "import path from 'node:path'; console.log(path.posix.join('a', 'b'))", onOutput: (_s, c) => (ok += c) }).promise;
   assert.match(ok, /a\/b/);
 });
+
+test('cursor and selection events relay only the documented fields', async () => {
+  const a = await client('synq-hard-0005', 'alice');
+  await a.socket.emitWithAck('room:settings', { approval: false });
+  const b = await client('synq-hard-0005', 'bobby');
+  a.socket.emit('cursor:move', { fileId: 'f-1', position: { lineNumber: 3, column: 7 }, rel: [1, 2, 3], userId: 'spoof', html: '<img src=x onerror=alert(1)>', blob: 'x'.repeat(100000) });
+  a.socket.emit('selection:change', { fileId: 'f-1', range: { startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 4, extra: 1 }, rel: { start: [1], end: [2] }, more: 'x' });
+  a.socket.emit('cursor:move', { fileId: 'f-1', position: { lineNumber: -1, column: 'x' } });
+  a.socket.emit('typing:start', { fileId: 'f-1', junk: 'y' });
+  await wait(400);
+  const cursor = b.of('cursor:move');
+  assert.equal(cursor.length, 1, 'an invalid position was relayed');
+  assert.deepEqual(cursor[0], { fileId: 'f-1', position: { lineNumber: 3, column: 7 }, rel: [1, 2, 3], userId: a.res.self.userId });
+  assert.deepEqual(b.of('selection:change')[0], {
+    fileId: 'f-1',
+    range: { startLineNumber: 1, startColumn: 1, endLineNumber: 2, endColumn: 4 },
+    rel: { start: [1], end: [2] },
+    userId: a.res.self.userId,
+  });
+  assert.deepEqual(b.of('typing:start')[0], { fileId: 'f-1', userId: a.res.self.userId });
+});

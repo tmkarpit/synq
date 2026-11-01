@@ -26,6 +26,38 @@ const NAME_PATTERN = /^[\p{L}\p{N} _.-]{2,24}$/u;
 /** Event payloads come from clients: anything that is not a plain object reads as {}. */
 const asObject = (data) => (data && typeof data === 'object' && !Array.isArray(data) ? data : {});
 
+const lineOrColumn = (v) => (Number.isInteger(v) && v > 0 && v < 10_000_000 ? v : null);
+const position = (lineNumber, column) => (lineOrColumn(lineNumber) && lineOrColumn(column) ? { lineNumber, column } : null);
+/** Y.encodeRelativePosition() bytes, as sent by the client (docs/SOCKET_EVENTS.md). */
+const relBytes = (r) => (Array.isArray(r) && r.length <= 64 && r.every((b) => Number.isInteger(b) && b >= 0 && b < 256) ? r : null);
+
+/**
+ * Cursor, selection and typing events are relayed to the whole room, so only the
+ * documented fields go out, checked and small; anything else a client adds is dropped.
+ */
+function relayPayload(event, data) {
+  if (typeof data.fileId !== 'string' || !data.fileId || data.fileId.length > 64) return null;
+  const { fileId } = data;
+  if (event === 'cursor:move') {
+    const p = position(data.position?.lineNumber, data.position?.column);
+    if (!p) return null;
+    const rel = relBytes(data.rel);
+    return { fileId, position: p, ...(rel ? { rel } : {}) };
+  }
+  if (event === 'selection:change') {
+    if (data.range == null) return { fileId, range: null };
+    const r = data.range;
+    const start = position(r.startLineNumber, r.startColumn);
+    const end = position(r.endLineNumber, r.endColumn);
+    if (!start || !end) return null;
+    const range = { startLineNumber: start.lineNumber, startColumn: start.column, endLineNumber: end.lineNumber, endColumn: end.column };
+    const relStart = relBytes(data.rel?.start);
+    const relEnd = relBytes(data.rel?.end);
+    return { fileId, range, ...(relStart && relEnd ? { rel: { start: relStart, end: relEnd } } : {}) };
+  }
+  return { fileId }; // typing:start / typing:stop
+}
+
 function pickColor(used, preferred) {
   const taken = new Set(used.map((c) => c?.toUpperCase()));
   if (preferred && PALETTE.includes(preferred.toUpperCase()) && !taken.has(preferred.toUpperCase())) return preferred.toUpperCase();
@@ -408,10 +440,11 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
 
     RELAYED.forEach((event) =>
       socket.on(event, (raw) => {
-        const data = asObject(raw);
         if (!room || !user) return;
-        if (event === 'cursor:move' && data.fileId && data.fileId !== user.fileId) {
-          user.fileId = String(data.fileId).slice(0, 64);
+        const data = relayPayload(event, asObject(raw));
+        if (!data) return;
+        if (event === 'cursor:move' && data.fileId !== user.fileId) {
+          user.fileId = data.fileId;
           socket.to(room.id).emit('user:updated', publicUser(user));
         }
         socket.to(room.id).emit(event, { ...data, userId: user.userId });
