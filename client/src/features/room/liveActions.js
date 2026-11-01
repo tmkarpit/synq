@@ -29,8 +29,9 @@ export async function openLive(service, fileId) {
     return;
   }
   // The preview is served by the SYNQ server: its own address when the site is hosted
-  // separately (VITE_API_URL), otherwise this page's origin.
-  const url = new URL(res.url, ENV.apiUrl || window.location.origin).href;
+  // separately (VITE_SOCKET_URL / VITE_API_URL), otherwise this page's origin. Previews
+  // need no login cookie, so they go to the server directly (not through a host rewrite).
+  const url = new URL(res.url, ENV.socketUrl || ENV.apiUrl || window.location.origin).href;
   if (tab) tab.location.href = url;
   else window.open(url, '_blank');
 }
