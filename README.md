@@ -100,34 +100,48 @@ Open http://localhost:5173 in your browser
 
 ## Deploy
 
-SYNQ runs as one Node.js service: the server also serves the website, so the site, API,
-WebSockets and Go Live share one address. Use a host that keeps WebSockets open (Render,
-Railway, Fly.io, a VPS) and a MongoDB database (MongoDB Atlas works).
+SYNQ needs a host that keeps WebSockets open, so the server cannot run on serverless
+functions. The recommended setup:
 
-With Docker
+| Part | Host | Config in this repo |
+|---|---|---|
+| Website | Vercel (static Vite build) | `client/vercel.json` |
+| Server (API + WebSockets) | Render Web Service | `render.yaml` |
+| Database | MongoDB Atlas | `MONGODB_URI` |
+
+Vercel passes `/api` on to Render, so the login cookie stays first-party (Safari and
+privacy modes block third-party cookies); live editing connects to Render directly.
+
+1. **MongoDB Atlas**: create a free cluster and a database user, allow `0.0.0.0/0` under
+   Network Access, and copy the connection string with `/synq` as the database name.
+2. **Render**: New > Blueprint > this repo. Fill in the secrets it asks for
+   (`MONGODB_URI`, `CLIENT_ORIGINS`, `GOOGLE_CLIENT_ID`, `SMTP_USER`, `SMTP_PASS`,
+   `MAIL_FROM`). Check that https://YOUR-SERVICE.onrender.com/health answers `{"ok":true}`.
+3. **Vercel**: import this repo with Root Directory `client`. Set `VITE_SOCKET_URL` to
+   the Render address, `VITE_USE_MOCK=false` and `SITE_URL` to the Vercel address. If
+   the Render service is not called `synq-server`, change the address in
+   `client/vercel.json` too.
+4. Put the Vercel address in `CLIENT_ORIGINS` on Render (https, no trailing slash), add
+   it to the Google OAuth client's authorized JavaScript origins, and redeploy both.
+
+Every setting is described in `server/.env.example` and `client/.env.example`.
+
+In production, running code and the terminal are off unless switched on. The Blueprint
+turns on only the sandboxed JavaScript/TypeScript runner (no files, processes or
+network). Python, C, C++ and Java would run without a sandbox, so keep them off on a
+shared server.
+
+**Free tier:** Render's free server sleeps after 15 minutes without traffic; the first
+visit then takes up to a minute and the site shows "Waking up the server…". A free
+uptime monitor (for example UptimeRobot) checking `/health` every 10 minutes keeps it
+awake. The server itself never pings itself.
+
+**One service instead** (no Vercel): the server can also serve the website.
 
 ```bash
   docker build --build-arg SITE_URL=https://your-domain.com -t synq .
-  docker run -p 4000:4000 --env-file server/.env -e NODE_ENV=production synq
+  docker run -p 4000:4000 --env-file server/.env -e NODE_ENV=production -e RUN_ENABLED=true synq
 ```
-
-Without Docker (Node.js 22.15 or newer): set `NODE_ENV=production` in `server/.env`, then
-
-```bash
-  npm run install:all
-  SITE_URL=https://your-domain.com npm start
-```
-
-For production, set in `server/.env`: `MONGODB_URI`, `JWT_SECRET`, `COOKIE_SECURE=true`
-(HTTPS), `TRUST_PROXY=1` when behind a load balancer, and the email settings
-(`SMTP_*`) so people can sign up. `SITE_URL` (at build time) adds the canonical link,
-link-preview image and `sitemap.xml`.
-
-In production the terminal and Python/C/C++/Java are off by default, because they run
-on the server without a sandbox; JavaScript and TypeScript run sandboxed (no files,
-processes or network). Turn the others on with `SHELL_ENABLED=true` and `RUN_LANGUAGES`
-only inside a container and for people you trust. See `server/.env.example` for every
-setting.
 
 ## Contributing
 

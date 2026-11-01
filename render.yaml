@@ -1,0 +1,54 @@
+# Render Blueprint for the SYNQ server (Render dashboard > New > Blueprint > this repo).
+# The website is on Vercel (client/vercel.json); the database is MongoDB Atlas.
+# Values marked "sync: false" are secrets: Render asks for them when the Blueprint is created.
+services:
+  - type: web
+    name: synq-server # gives https://synq-server.onrender.com if the name is free
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      # mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/synq?retryWrites=true&w=majority
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Your Vercel address, https, no trailing slash (comma separate several).
+      - key: CLIENT_ORIGINS
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      # Visitor -> Vercel (/api rewrite) -> Render's proxy -> server.
+      - key: TRUST_PROXY
+        value: "2"
+      # Only the sandboxed JavaScript/TypeScript runner; native languages and the terminal
+      # run unsandboxed and stay off on this shared server.
+      - key: RUN_ENABLED
+        value: "true"
+      - key: RUN_LANGUAGES
+        value: javascript,typescript
+      - key: SHELL_ENABLED
+        value: "false"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: OTP_DEV_LOG
+        value: "false"
