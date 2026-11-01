@@ -137,7 +137,16 @@ export default function FinalCta() {
           >
             {APP.author.name}
           </a>
-          <p className="mt-2 text-[13px] text-muted">{APP.license} licensed</p>
+          <p className="mt-2 text-[13px] text-muted">
+            {APP.license} licensed ·{' '}
+            <Link to="/privacy" className="hover:text-ink">
+              Privacy
+            </Link>{' '}
+            ·{' '}
+            <Link to="/terms" className="hover:text-ink">
+              Terms
+            </Link>
+          </p>
         </div>
         <p
           data-wordmark

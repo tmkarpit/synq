@@ -303,6 +303,19 @@ export default function AuthPage({ mode }) {
                 >
                   {signup ? 'Create account' : 'Log in'} <ArrowRight size={16} aria-hidden />
                 </Button>
+                {signup && (
+                  <p className="!mt-3 text-center text-[12px] text-muted">
+                    By creating an account you agree to the{' '}
+                    <Link to="/terms" className="text-ink underline underline-offset-2">
+                      terms
+                    </Link>{' '}
+                    and{' '}
+                    <Link to="/privacy" className="text-ink underline underline-offset-2">
+                      privacy policy
+                    </Link>
+                    .
+                  </p>
+                )}
               </form>
               {!signup && (
                 <button

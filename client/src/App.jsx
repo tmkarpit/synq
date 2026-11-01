@@ -24,6 +24,7 @@ if (window.location.pathname.startsWith('/room/')) {
   import('@/features/editor/CodeEditor');
 }
 const NotFoundPage = lazy(() => import('@/features/notfound/NotFoundPage'));
+const LegalPage = lazy(() => import('@/features/legal/LegalPage'));
 
 /** First path segment: "/room/a" and "/room/b" share the key "room", so no wipe replays. */
 function routeKey(pathname) {
@@ -68,6 +69,8 @@ function AnimatedRoutes() {
                 </RequireAuth>
               }
             />
+            <Route path="/privacy" element={<LegalPage page="privacy" />} />
+            <Route path="/terms" element={<LegalPage page="terms" />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
