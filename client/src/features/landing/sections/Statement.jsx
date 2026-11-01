@@ -10,7 +10,7 @@ export default function Statement() {
     () => {
       const mm = gsap.matchMedia();
       mm.add(MOTION_OK, () => {
-        const split = SplitText.create('[data-statement]', { type: 'words' });
+        const split = SplitText.create('[data-statement]', { type: 'words', aria: 'none' });
         gsap.fromTo(
           split.words,
           { opacity: 0.12 },

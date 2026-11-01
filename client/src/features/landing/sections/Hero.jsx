@@ -190,7 +190,7 @@ export default function Hero() {
           <Magnetic>
             <Link
               to="/join?mode=create"
-              className="group flex h-14 items-center gap-2 rounded-full bg-[#7C5CFF] px-7 text-[16px] font-semibold text-white shadow-[0_18px_50px_-14px_rgba(124,92,255,0.9)] transition-colors hover:bg-[#8B6DFF]"
+              className="group flex h-14 items-center gap-2 rounded-full bg-[#6D4AFF] px-7 text-[16px] font-semibold text-white shadow-[0_18px_50px_-14px_rgba(124,92,255,0.9)] transition-colors hover:bg-[#8B6DFF]"
             >
               Start a room
               <ArrowRight
