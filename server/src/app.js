@@ -221,6 +221,8 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       }
       const job = shell.exec({ roomId: room.id, cwd: room.shellCwd, command: toRun, onOutput: emitOutput });
       room.shellJob.job = job;
+      // Everyone left while the files were being written: stop it right away.
+      if (!room.users.size) job.cancel();
       const result = await job.promise;
       if (result.exitCode !== 0 && /^npm\s+ci\s*$/i.test(command) && !shell.hasFile(room.id, room.shellCwd, 'package.json')) {
         // npm leaves an empty package-lock.json behind; it would only confuse.
