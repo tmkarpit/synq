@@ -72,6 +72,7 @@ export const useAuthStore = create((set, get) => ({
   user: null,
   accessToken: null,
   switchedTo: null, // { name, email } when another tab logged in as someone else
+  waking: false, // true while the server does not answer yet (asleep on a free host, restarting)
 
   setSession: ({ user, accessToken }) => {
     const current = get().user;
@@ -133,8 +134,10 @@ export const useAuthStore = create((set, get) => ({
     for (let attempt = 0; ; attempt += 1) {
       try {
         await get().refresh();
+        if (get().waking) set({ waking: false });
         return;
       } catch {
+        if (!get().waking) set({ waking: true });
         await new Promise((r) => setTimeout(r, RETRY_MS[Math.min(attempt, RETRY_MS.length - 1)]));
       }
     }

@@ -32,7 +32,10 @@ export default function GoogleButton({ onCredential, oneTap = false, text = 'con
   const [clientId, setClientId] = useState(null);
   const [error, setError] = useState(null);
 
+  // Asked again when the server wakes up (while it sleeps the config is empty).
+  const waking = useAuthStore((s) => s.waking);
   useEffect(() => {
+    if (waking) return undefined;
     let active = true;
     useAuthStore
       .getState()
@@ -41,7 +44,7 @@ export default function GoogleButton({ onCredential, oneTap = false, text = 'con
     return () => {
       active = false;
     };
-  }, []);
+  }, [waking]);
 
   useEffect(() => {
     if (!clientId) return undefined;

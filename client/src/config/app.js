@@ -6,14 +6,21 @@ export const APP = Object.freeze({
   description:
     'A real-time collaborative code editor. Create a room, share the ID, and edit a multi-file project together with live cursors, chat and a shared terminal.',
   // linkedin: put the profile address here (https://www.linkedin.com/in/...) to show its icon.
-  author: { name: 'Arpit Tamrakar', github: 'https://github.com/tmkarpit', linkedin: 'https://www.linkedin.com/in/arpittamrakar' },
+  author: {
+    name: 'Arpit Tamrakar',
+    github: 'https://github.com/tmkarpit',
+    linkedin: 'https://www.linkedin.com/in/arpittamrakar',
+  },
   license: 'MIT',
 });
 
 const socketUrl = (import.meta.env.VITE_SOCKET_URL || '').trim();
 // The offline demo (mock collaboration) is the default only in development: a production
 // build without VITE_USE_MOCK talks to the real server.
-const useMockFlag = String(import.meta.env.VITE_USE_MOCK ?? (import.meta.env.DEV ? 'true' : 'false')).toLowerCase() === 'true';
+const useMockFlag =
+  String(
+    import.meta.env.VITE_USE_MOCK ?? (import.meta.env.DEV ? 'true' : 'false'),
+  ).toLowerCase() === 'true';
 
 export const ENV = Object.freeze({
   // Empty = same origin (the Vite dev server proxies /socket.io and /api to the SYNQ server).

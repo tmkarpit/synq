@@ -6,6 +6,7 @@ import ErrorBoundary from '@/components/layout/ErrorBoundary';
 import DesktopOnlyGate from '@/components/layout/DesktopOnlyGate';
 import PageTransition from '@/components/layout/PageTransition';
 import RouteFallback from '@/components/layout/RouteFallback';
+import ServerWaking from '@/components/layout/ServerWaking';
 import RequireAuth from '@/components/layout/RequireAuth';
 import AccountSwitched from '@/components/layout/AccountSwitched';
 import { useAuthStore } from '@/store/authStore';
@@ -91,6 +92,7 @@ export default function App() {
     <ErrorBoundary>
       <DesktopOnlyGate>
         {switched ? <AccountSwitched /> : <AnimatedRoutes />}
+        <ServerWaking />
         <Toaster
           theme="dark"
           position="bottom-right"

@@ -72,9 +72,11 @@ export default function AuthPage({ mode }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Asked again when the server wakes up (the first try finds nothing while it sleeps).
+  const waking = useAuthStore((s) => s.waking);
   useEffect(() => {
-    useAuthStore.getState().config().then(setConfig);
-  }, []);
+    if (!waking) useAuthStore.getState().config().then(setConfig);
+  }, [waking]);
 
   // Already signed in when arriving (or the server has no accounts): nothing to do here.
   // While a code step is open, that step decides where to go.

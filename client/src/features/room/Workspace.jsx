@@ -52,8 +52,14 @@ function OfflineBanner() {
       className="mx-2 mb-2 flex shrink-0 items-center gap-2 rounded-xl border border-[#5A1D1D] bg-[#2A1215] px-3 py-1.5 text-[12px] text-[#F2B8B5]"
     >
       <WifiOff size={13} aria-hidden />
-      Can&apos;t reach the SYNQ server. Your changes are kept here and will sync when it is back.
-      (Start it with <code className="font-mono">npm run dev:server</code>.)
+      {ENV.isDev ? (
+        <>
+          Can&apos;t reach the SYNQ server. Your changes are kept here and will sync when it is
+          back. (Start it with <code className="font-mono">npm run dev:server</code>.)
+        </>
+      ) : (
+        <>Reconnecting to the server… your changes are kept here and sync as soon as it answers.</>
+      )}
     </div>
   );
 }
