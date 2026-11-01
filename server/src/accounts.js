@@ -259,14 +259,19 @@ export class Accounts {
     return { name: cleanName, email: cleanEmail, password: pass };
   }
 
-  /** At most 10 tries per key in 10 minutes (login per address+email, signup per address). */
-  limit(key) {
+  /**
+   * At most `max` tries per key in 10 minutes. Keys per IP address (login per address+email,
+   * signup and codes per address) and per account (any address): the account limits hold
+   * even when a client fakes its address, so nobody can guess one account's password or
+   * flood one inbox with codes.
+   */
+  limit(key, max = 10) {
     const now = Date.now();
     if (this.attempts.size > 10_000) {
       for (const [k, v] of this.attempts) if (v.until <= now) this.attempts.delete(k);
     }
     const entry = this.attempts.get(key);
-    if (entry && entry.until > now && entry.count >= 10) throw new AuthError(429, 'Too many attempts. Wait a few minutes and try again.');
+    if (entry && entry.until > now && entry.count >= max) throw new AuthError(429, 'Too many attempts. Wait a few minutes and try again.');
     if (!entry || entry.until <= now) this.attempts.set(key, { count: 1, until: now + 10 * 60 * 1000 });
     else entry.count += 1;
   }
@@ -279,6 +284,7 @@ export class Accounts {
     const { name, email, password } = this.validate(input, true);
     const phone = this.normalizePhone(input.phone);
     this.limit(`signup|${ip}`);
+    this.limit(`signup-to|${email}`, 5);
     this.requireChannel('email');
     const taken = await this.users.findOne({ emailLower: email }, { projection: { _id: 1 } });
     if (taken) throw new AuthError(409, 'An account with this email already exists. Log in instead.');
@@ -307,6 +313,7 @@ export class Accounts {
     const target = channel === 'email' ? raw.toLowerCase() : this.normalizePhone(raw);
     if (channel === 'email' && !EMAIL.test(target)) throw new AuthError(400, 'Enter a valid email address.');
     this.limit(`code|${ip}`);
+    this.limit(`code-to|${target}`, 5);
     this.requireChannel(channel);
     const found = await this.users.findOne(
       channel === 'email' ? { emailLower: target } : { phone: target, phoneVerifiedAt: { $type: 'date' } },
@@ -438,6 +445,7 @@ export class Accounts {
   async login(input, ip = '') {
     const { email, password } = this.validate(input, false);
     this.limit(`${ip}|${email}`);
+    this.limit(`login|${email}`, 30);
     const user = await this.users.findOne({ emailLower: email });
     const ok = await checkPassword(password, user?.passwordHash ?? (await DUMMY_HASH));
     if (!user || !user.passwordHash || !ok) throw new AuthError(401, 'Wrong email or password.');

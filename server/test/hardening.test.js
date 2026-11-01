@@ -256,3 +256,16 @@ test('code runs see no environment variables from the server or the OS', async (
   await runJavaScript({ code: 'console.log(JSON.stringify(Object.keys(process.env)), readline())', stdin: 'line one\n', onOutput: (_s, c) => (out += c) }).promise;
   assert.match(out, /^\[\] line one/);
 });
+
+test('per-account limits hold even when every request claims another IP address', async () => {
+  const { Accounts } = await import('../src/accounts.js');
+  const users = { findOne: async () => null };
+  const accounts = new Accounts({ db: { collection: () => users }, secret: 'x'.repeat(40) });
+  let blockedAt = null;
+  for (let i = 0; i < 40 && blockedAt === null; i += 1) {
+    await accounts.login({ email: 'victim@example.com', password: `guess-${i}` }, `203.0.113.${i}`).catch((err) => {
+      if (err.status === 429) blockedAt = i;
+    });
+  }
+  assert.equal(blockedAt, 30, 'password guesses for one account from many addresses must stop at 30');
+});
