@@ -1,0 +1,7 @@
+node_modules/
+workspaces/
+data/
+logs/
+test-results/
+playwright-report/
+.auth/

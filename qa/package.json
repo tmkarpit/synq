@@ -1,0 +1,25 @@
+{
+  "name": "synq-qa",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end and security checks for SYNQ (runs against an isolated server on synq_test)",
+  "scripts": {
+    "server": "node --env-file=../server/.env scripts/start-server.mjs",
+    "client": "node scripts/start-client.mjs",
+    "test:security": "node --test --test-force-exit --test-timeout=90000 scripts/security.test.mjs",
+    "test:run": "node --test --test-force-exit --test-timeout=90000 scripts/run.test.mjs",
+    "test:collab": "node --test --test-force-exit --test-timeout=90000 scripts/collab.test.mjs",
+    "test:crash": "node --env-file=../server/.env scripts/crash-probe.mjs",
+    "test:e2e": "playwright test --project=chromium e2e/collab.spec.mjs e2e/restart.spec.mjs e2e/memory.spec.mjs",
+    "test:browsers": "playwright test e2e/smoke.spec.mjs",
+    "load": "node scripts/load.mjs 30 120",
+    "lighthouse": "node scripts/lighthouse.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "lighthouse": "^12.8.2",
+    "mongodb": "^6.21.0",
+    "socket.io-client": "^4.8.1",
+    "yjs": "^13.6.33"
+  }
+}
