@@ -249,3 +249,10 @@ test('C and C++ compile errors name the file the user wrote, with the line numbe
   assert.match(out, /bad\.c:2/);
   assert.doesNotMatch(out, /main\.c/);
 });
+
+test('code runs see no environment variables from the server or the OS', async () => {
+  const { runJavaScript } = await import('../src/runner.js');
+  let out = '';
+  await runJavaScript({ code: 'console.log(JSON.stringify(Object.keys(process.env)), readline())', stdin: 'line one\n', onOutput: (_s, c) => (out += c) }).promise;
+  assert.match(out, /^\[\] line one/);
+});

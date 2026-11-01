@@ -37,6 +37,8 @@ registerHooks({ resolve(specifier, context, next) { if (isBlocked(specifier)) th
 const builtin = process.getBuiltinModule;
 Object.defineProperty(process, 'getBuiltinModule', { value: (id) => { if (isBlocked(id)) throw refuse(id); return builtin(id); }, writable: false, configurable: false });
 Object.defineProperty(process, 'binding', { value: () => { throw refuse('process.binding'); }, writable: false, configurable: false });
+// Windows adds variables to every process (USERNAME, USERPROFILE, PATH...): hide them.
+for (const key of Object.keys(process.env)) if (key !== 'SYNQ_STDIN') delete process.env[key];
 for (const name of ['fetch', 'WebSocket', 'EventSource']) Object.defineProperty(globalThis, name, { value: function blocked() { throw refuse(name); }, writable: false, configurable: false });
 `;
 // Written once per server start; the sandbox may read exactly this file and nothing else.

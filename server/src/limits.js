@@ -4,7 +4,7 @@
 export const SOCKET_LIMITS = {
   join: { burst: 10, perSecond: 10 / 60 },
   chat: { burst: 10, perSecond: 5 },
-  run: { burst: 3, perSecond: 3 / 10 },
+  run: { burst: 10, perSecond: 1 },
   shell: { burst: 5, perSecond: 5 / 10 },
   relay: { burst: 80, perSecond: 40 }, // cursor, selection, typing (all together)
   // Document edits are never dropped (that would block the sender's later edits); a

@@ -574,7 +574,8 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
 
     socket.on('run:request', (data) => {
       if (!room || !user) return;
-      if (!limits.take('run')) {
+      // A run refused as "busy" (startRun) costs nothing; only runs that would start count.
+      if (!room.activeRun && !limits.take('run')) {
         socket.emit('run:rejected', { reason: 'busy', message: 'Too many runs in a row. Wait a few seconds.' });
         return;
       }
