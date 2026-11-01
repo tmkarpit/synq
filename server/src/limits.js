@@ -12,6 +12,9 @@ export const SOCKET_LIMITS = {
   updateBytes: { burst: 20 * 1024 * 1024, perSecond: 2 * 1024 * 1024 },
 };
 
+// Per person (across connections): opening a new room ID creates a room in the database.
+export const NEW_ROOM_LIMIT = { newRoom: { burst: 20, perSecond: 20 / 3600 } };
+
 export class Buckets {
   constructor(limits = SOCKET_LIMITS, now = () => Date.now()) {
     this.limits = limits;

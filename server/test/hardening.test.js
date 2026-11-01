@@ -218,3 +218,22 @@ test('a run is stopped when the last person leaves the room', async () => {
   fs.rmSync(dir, { recursive: true, force: true });
   assert.equal(stoppedOnLeave, true);
 });
+
+test('one person can create at most 20 new rooms an hour', async () => {
+  const socket = connect(url, { transports: ['websocket'], forceNew: true });
+  sockets.push(socket);
+  await new Promise((r) => socket.on('connect', r));
+  const memberKey = 'qa-member-key-0123456789';
+  const results = [];
+  for (let i = 0; i < 21; i += 1) {
+    const id = `synq-new${String.fromCharCode(97 + Math.floor(i / 10))}-r${String(i % 10).padStart(3, '0')}`;
+    // A new connection per room, like opening rooms in new tabs (the join limit is per connection).
+    const s = connect(url, { transports: ['websocket'], forceNew: true });
+    sockets.push(s);
+    await new Promise((r) => s.on('connect', r));
+    results.push(await s.emitWithAck('room:join', { roomId: id, username: 'maker', memberKey }));
+    s.disconnect();
+  }
+  assert.equal(results.slice(0, 20).filter((r) => r.self?.role === 'owner').length, 20);
+  assert.match(results[20].error, /a lot of rooms/);
+});

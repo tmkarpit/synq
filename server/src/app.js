@@ -14,7 +14,7 @@ import { LiveServer } from './live.js';
 import { GitHubError } from './github.js';
 import { restoreTree, snapshotTree, treeUpdateError } from './tree.js';
 import { createStaticHandler } from './static.js';
-import { Buckets } from './limits.js';
+import { Buckets, NEW_ROOM_LIMIT } from './limits.js';
 
 // Implements docs/SOCKET_EVENTS.md. One Socket.IO room per SYNQ room.
 
@@ -141,6 +141,14 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
     fileId: u.fileId,
     joinedAt: u.joinedAt,
   });
+
+  // member -> Buckets: how many new rooms each person may create (limits.js).
+  const roomCreators = new Map();
+  const mayCreateRoom = (member) => {
+    if (!roomCreators.has(member)) roomCreators.set(member, new Buckets(NEW_ROOM_LIMIT));
+    if (roomCreators.size > 50_000) roomCreators.clear(); // a bound on memory, not a security limit
+    return roomCreators.get(member).take('newRoom');
+  };
 
   // Sockets waiting for the owner to answer a join request: "roomId|member" -> Set<socket>.
   const waiting = new Map();
@@ -332,6 +340,10 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       // The first person in a room without an owner becomes its owner (with accounts, a
       // room owned by a browser from before accounts is claimed by the first account).
       if (!meta.owner || (accounts && !isAccountMember(meta.owner))) {
+        if (!meta.owner && !mayCreateRoom(member)) {
+          rooms.release(target);
+          return ack({ error: "You've created a lot of rooms in the last hour. Try again later, or open one of your rooms." });
+        }
         meta.owner = member;
         meta.name ??= cleanRoomName(payload.roomName);
         meta.members[member] = { name: username, role: 'editor' };

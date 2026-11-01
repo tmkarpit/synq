@@ -48,8 +48,8 @@ export class MongoStore {
       db.collection('refresh_tokens').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 86400 }),
       db.collection('otp_codes').createIndex({ target: 1, createdAt: -1 }),
       db.collection('otp_codes').createIndex({ createdAt: 1 }, { expireAfterSeconds: 86400 }),
-      // Every signup, login, failed login and logout; kept for good (no expiry).
-      db.collection('login_history').createIndex({ at: -1 }),
+      // Every signup, login, failed login and logout; MongoDB deletes entries after a year.
+      db.collection('login_history').createIndex({ at: 1 }, { expireAfterSeconds: 365 * 86400 }),
       db.collection('login_history').createIndex({ userId: 1, at: -1 }),
       db.collection('login_history').createIndex({ email: 1, at: -1 }),
     ]);
