@@ -165,3 +165,28 @@ test('cursor and selection events relay only the documented fields', async () =>
   });
   assert.deepEqual(b.of('typing:start')[0], { fileId: 'f-1', userId: a.res.self.userId });
 });
+
+test('chat floods and run spam are rate limited per connection; normal use is not', async () => {
+  const a = await client('synq-hard-0006', 'alice');
+  for (let i = 0; i < 200; i += 1) a.socket.emit('chat:send', { text: `spam ${i}` });
+  await wait(600);
+  const delivered = a.of('chat:message').length;
+  assert.ok(delivered >= 10 && delivered <= 20, `${delivered} of 200 flood messages delivered`);
+  await wait(1200);
+  a.socket.emit('chat:send', { text: 'normal message' });
+  await wait(300);
+  assert.equal(a.of('chat:message').at(-1).text, 'normal message');
+});
+
+test('rate limit buckets refill over time', async () => {
+  const { Buckets } = await import('../src/limits.js');
+  let t = 0;
+  const b = new Buckets({ x: { burst: 2, perSecond: 1 } }, () => t);
+  assert.equal(b.take('x'), true);
+  assert.equal(b.take('x'), true);
+  assert.equal(b.take('x'), false);
+  t = 1000;
+  assert.equal(b.take('x'), true);
+  assert.equal(b.take('x'), false);
+  assert.equal(b.take('unknown'), true);
+});

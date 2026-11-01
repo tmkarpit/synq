@@ -14,6 +14,7 @@ import { LiveServer } from './live.js';
 import { GitHubError } from './github.js';
 import { restoreTree, snapshotTree, treeUpdateError } from './tree.js';
 import { createStaticHandler } from './static.js';
+import { Buckets } from './limits.js';
 
 // Implements docs/SOCKET_EVENTS.md. One Socket.IO room per SYNQ room.
 
@@ -306,9 +307,11 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
   io.on('connection', (socket) => {
     let room = null;
     let user = null;
+    const limits = new Buckets(); // per connection (limits.js)
 
     socket.on('room:join', async (raw, ack = () => {}) => {
       if (typeof ack !== 'function') return;
+      if (!limits.take('join')) return ack({ error: 'Too many attempts. Wait a minute and try again.' });
       const payload = asObject(raw);
       const roomId = String(payload.roomId || '');
       const account = socket.data.account;
@@ -409,6 +412,11 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       if (!room || !user || user.role === 'viewer' || !update) return;
       try {
         const bytes = new Uint8Array(update);
+        if (!limits.take('updateBytes', bytes.length)) {
+          console.warn(`[synq] ${user.username} sent too much data; disconnecting`);
+          socket.disconnect(true);
+          return;
+        }
         const refused =
           treeUpdateError(room.doc, bytes) ||
           (room.meta.settings.ownerOnlyFiles && user.role !== 'owner' && changesStructure(room.doc, bytes)
@@ -433,14 +441,14 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
 
     socket.on('presence:update', (data) => {
       const { fileId = null } = asObject(data);
-      if (!room || !user) return;
+      if (!room || !user || !limits.take('relay')) return;
       user.fileId = typeof fileId === 'string' ? fileId.slice(0, 64) : null;
       io.to(room.id).emit('user:updated', publicUser(user));
     });
 
     RELAYED.forEach((event) =>
       socket.on(event, (raw) => {
-        if (!room || !user) return;
+        if (!room || !user || !limits.take('relay')) return;
         const data = relayPayload(event, asObject(raw));
         if (!data) return;
         if (event === 'cursor:move' && data.fileId !== user.fileId) {
@@ -453,7 +461,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
 
     socket.on('chat:send', (data) => {
       const { text } = asObject(data);
-      if (!room || !user) return;
+      if (!room || !user || !limits.take('chat')) return;
       const clean = String(text || '').trim().slice(0, MAX_CHAT);
       if (!clean) return;
       io.to(room.id).emit('chat:message', {
@@ -550,13 +558,21 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       }),
     );
 
-    socket.on('run:request', (data) => room && user && startRun(room, user, asObject(data)));
+    socket.on('run:request', (data) => {
+      if (!room || !user) return;
+      if (!limits.take('run')) {
+        socket.emit('run:rejected', { reason: 'busy', message: 'Too many runs in a row. Wait a few seconds.' });
+        return;
+      }
+      startRun(room, user, asObject(data));
+    });
 
     socket.on('shell:exec', (data) => {
       const { command } = asObject(data);
       if (!room || !user) return;
       const line = String(command || '').trim().slice(0, 4000);
       if (!line) return;
+      if (!limits.take('shell')) return socket.emit('shell:rejected', { message: 'Too many commands in a row. Wait a few seconds.' });
       const denied = shellDenied(room, user);
       if (denied) return socket.emit('shell:rejected', { message: denied });
       if (room.shellJob) {
