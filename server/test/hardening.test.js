@@ -190,3 +190,31 @@ test('rate limit buckets refill over time', async () => {
   assert.equal(b.take('x'), false);
   assert.equal(b.take('unknown'), true);
 });
+
+test('a run is stopped when the last person leaves the room', async () => {
+  let cancelled = false;
+  let finish;
+  const runner = () => ({ promise: new Promise((r) => (finish = r)), cancel: () => { cancelled = true; finish({ exitCode: 130, durationMs: 1 }); } });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'synq-leave-'));
+  const own = createSynqServer({ dataDir: dir, runner, languages: { javascript: { label: 'JavaScript', kind: 'node', inputType: 'module' } } });
+  const { port } = await own.listen(0, '127.0.0.1');
+  const socket = connect(`http://127.0.0.1:${port}`, { transports: ['websocket'], forceNew: true });
+  await new Promise((r) => socket.on('connect', r));
+  const res = await socket.emitWithAck('room:join', { roomId: 'synq-hard-0007', username: 'alice' });
+  const doc = new Y.Doc();
+  Y.applyUpdate(doc, new Uint8Array(res.state));
+  doc.on('update', (u) => socket.emit('yjs:update', { update: u }));
+  doc.transact(() => {
+    doc.getMap('texts').set('f-1', new Y.Text('while (true) {}'));
+    doc.getMap('nodes').set('f-1', { id: 'f-1', name: 'loop.js', type: 'file', parentId: null });
+  });
+  await wait(200);
+  socket.emit('run:request', { fileId: 'f-1' });
+  await wait(200);
+  socket.disconnect();
+  await wait(300);
+  const stoppedOnLeave = cancelled;
+  await own.close();
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.equal(stoppedOnLeave, true);
+});

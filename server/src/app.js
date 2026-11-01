@@ -664,6 +664,11 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
     function leave() {
       if (!room || !user) return;
       room.users.delete(user.userId);
+      if (!room.users.size) {
+        // Nobody is left to see the output: stop the terminal command and the run.
+        room.shellJob?.job?.cancel();
+        room.job?.cancel();
+      }
       socket.leave(room.id);
       io.to(room.id).emit('user:left', { userId: user.userId });
       sendAccess(room);
