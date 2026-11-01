@@ -13,7 +13,9 @@
     "test:e2e": "playwright test --project=chromium e2e/collab.spec.mjs e2e/restart.spec.mjs e2e/memory.spec.mjs",
     "test:browsers": "playwright test e2e/smoke.spec.mjs",
     "load": "node scripts/load.mjs 30 120",
-    "lighthouse": "node scripts/lighthouse.mjs"
+    "lighthouse": "node scripts/lighthouse.mjs",
+    "test:deploy": "playwright test --project=chromium e2e/deploy.spec.mjs",
+    "test:waking": "node scripts/waking-check.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
