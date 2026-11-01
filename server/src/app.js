@@ -21,6 +21,8 @@ const MAX_CHAT = 2000;
 const MAX_UPDATE_BYTES = 2 * 1024 * 1024;
 const NAME_PATTERN = /^[\p{L}\p{N} _.-]{2,24}$/u;
 
+/** Event payloads come from clients: anything that is not a plain object reads as {}. */
+const asObject = (data) => (data && typeof data === 'object' && !Array.isArray(data) ? data : {});
 
 function pickColor(used, preferred) {
   const taken = new Set(used.map((c) => c?.toUpperCase()));
@@ -265,8 +267,9 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
     let room = null;
     let user = null;
 
-    socket.on('room:join', async (payload = {}, ack = () => {}) => {
+    socket.on('room:join', async (raw, ack = () => {}) => {
       if (typeof ack !== 'function') return;
+      const payload = asObject(raw);
       const roomId = String(payload.roomId || '');
       const account = socket.data.account;
       const username = account ? account.name : String(payload.username || '').trim();
@@ -361,7 +364,8 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       return undefined;
     });
 
-    socket.on('yjs:update', ({ update } = {}) => {
+    socket.on('yjs:update', (data) => {
+      const { update } = asObject(data);
       if (!room || !user || user.role === 'viewer' || !update) return;
       try {
         const bytes = new Uint8Array(update);
@@ -376,15 +380,17 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       }
     });
 
-    socket.on('presence:update', ({ fileId = null } = {}) => {
+    socket.on('presence:update', (data) => {
+      const { fileId = null } = asObject(data);
       if (!room || !user) return;
       user.fileId = typeof fileId === 'string' ? fileId.slice(0, 64) : null;
       io.to(room.id).emit('user:updated', publicUser(user));
     });
 
     RELAYED.forEach((event) =>
-      socket.on(event, (data = {}) => {
-        if (!room || !user || typeof data !== 'object') return;
+      socket.on(event, (raw) => {
+        const data = asObject(raw);
+        if (!room || !user) return;
         if (event === 'cursor:move' && data.fileId && data.fileId !== user.fileId) {
           user.fileId = String(data.fileId).slice(0, 64);
           socket.to(room.id).emit('user:updated', publicUser(user));
@@ -393,7 +399,8 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       }),
     );
 
-    socket.on('chat:send', ({ text } = {}) => {
+    socket.on('chat:send', (data) => {
+      const { text } = asObject(data);
       if (!room || !user) return;
       const clean = String(text || '').trim().slice(0, MAX_CHAT);
       if (!clean) return;
@@ -422,7 +429,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       const reply = typeof ack === 'function' ? ack : () => {};
       if (!room || !user) return reply({ error: 'Not in a room.' });
       if (user.role !== 'owner') return reply({ error: 'Only the room owner can do that.' });
-      const error = await handler(data && typeof data === 'object' ? data : {});
+      const error = await handler(asObject(data));
       if (error) return reply({ error });
       if (!(await rooms.saveMeta(room))) return reply({ error: 'The server could not save the change.' });
       sendAccess(room);
@@ -491,9 +498,10 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       }),
     );
 
-    socket.on('run:request', (data) => room && user && startRun(room, user, data));
+    socket.on('run:request', (data) => room && user && startRun(room, user, asObject(data)));
 
-    socket.on('shell:exec', ({ command } = {}) => {
+    socket.on('shell:exec', (data) => {
+      const { command } = asObject(data);
       if (!room || !user) return;
       const line = String(command || '').trim().slice(0, 4000);
       if (!line) return;
@@ -508,7 +516,8 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
     });
 
     // Go Live: the preview address of a file (anyone in the room may open it).
-    socket.on('live:open', ({ path: filePath } = {}, ack) => {
+    socket.on('live:open', (data, ack) => {
+      const { path: filePath } = asObject(data);
       const reply = typeof ack === 'function' ? ack : () => {};
       if (!room || !user) return reply({ error: 'Not in a room.' });
       const nodes = room.doc.getMap('nodes');
@@ -538,7 +547,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       const reply = typeof ack === 'function' ? ack : () => {};
       if (!room || !user) return reply({ error: 'Not in a room.' });
       if (!github || !socket.data.account) return reply({ error: 'Log in to push to GitHub.' });
-      const { repo, isPrivate, branch, message } = data && typeof data === 'object' ? data : {};
+      const { repo, isPrivate, branch, message } = asObject(data);
       const files = allFileRows(room.doc)
         .filter((f) => f.path && !f.path.split('/').includes('node_modules'))
         .map(({ path: p, content }) => ({ path: p, content }));
@@ -566,7 +575,8 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
     });
 
     // The file tree lists server-only folders (node_modules) one level at a time.
-    socket.on('shell:list', async ({ path: rel } = {}, ack) => {
+    socket.on('shell:list', async (data, ack) => {
+      const { path: rel } = asObject(data);
       const reply = typeof ack === 'function' ? ack : () => {};
       if (!room || !user || !shell) return reply({ error: 'Not available.' });
       return reply(await shell.listServerDir(room.id, rel));
