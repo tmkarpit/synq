@@ -12,6 +12,7 @@ import { accessList, accountMember, applySettings, changesStructure, cleanRoomNa
 import { createAccountRoutes } from './accounts.js';
 import { LiveServer } from './live.js';
 import { GitHubError } from './github.js';
+import { restoreTree, snapshotTree, treeUpdateError } from './tree.js';
 
 // Implements docs/SOCKET_EVENTS.md. One Socket.IO room per SYNQ room.
 
@@ -369,8 +370,19 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       if (!room || !user || user.role === 'viewer' || !update) return;
       try {
         const bytes = new Uint8Array(update);
-        if (room.meta.settings.ownerOnlyFiles && user.role !== 'owner' && changesStructure(room.doc, bytes)) {
-          socket.emit('update:rejected', { message: 'Only the room owner can create or delete files in this room.' });
+        const refused =
+          treeUpdateError(room.doc, bytes) ||
+          (room.meta.settings.ownerOnlyFiles && user.role !== 'owner' && changesStructure(room.doc, bytes)
+            ? 'Only the room owner can create or delete files in this room.'
+            : null);
+        if (refused) {
+          // Apply, then undo the tree part, and send the result to everyone (see snapshotTree).
+          const snapshot = snapshotTree(room.doc);
+          const stateVector = Y.encodeStateVector(room.doc);
+          Y.applyUpdate(room.doc, bytes, socket.id);
+          restoreTree(room.doc, snapshot);
+          io.to(room.id).emit('yjs:update', { update: Y.encodeStateAsUpdate(room.doc, stateVector) });
+          socket.emit('update:rejected', { message: refused });
           return;
         }
         Y.applyUpdate(room.doc, bytes, socket.id);

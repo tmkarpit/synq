@@ -69,6 +69,13 @@ function killTree(child) {
 }
 
 const toPosix = (p) => p.split(path.sep).join('/');
+
+/** The absolute path of `rel` inside `root`, or null when it would land outside it. */
+function inside(root, rel) {
+  const full = path.resolve(root, rel);
+  const back = path.relative(root, full);
+  return back && !back.startsWith('..') && !path.isAbsolute(back) ? full : null;
+}
 // npm keeps bookkeeping dot-files (.package-lock.json) even in an empty node_modules.
 const hasContent = async (dir) => (await fs.promises.readdir(dir).catch(() => [])).some((n) => !n.startsWith('.'));
 const isText = (buf) => !buf.subarray(0, 8000).includes(0);
@@ -205,9 +212,15 @@ export class Shell {
     await fs.promises.mkdir(path.join(dir, 'node_modules'), { recursive: true });
     const previous = await this.loadManifest(roomId);
     const { files, folders } = docFiles(doc);
-    for (const folder of folders) await fs.promises.mkdir(path.join(dir, folder), { recursive: true });
+    // Names are checked when they enter the room (tree.js); rooms saved before that check
+    // could still hold a name like "../x", so every path is contained here as well.
+    for (const rel of [...files.keys()]) if (!inside(dir, rel)) files.delete(rel);
+    for (const folder of folders) {
+      const full = inside(dir, folder);
+      if (full) await fs.promises.mkdir(full, { recursive: true });
+    }
     for (const [rel, content] of files) {
-      const full = path.join(dir, rel);
+      const full = inside(dir, rel);
       const onDisk = await fs.promises.readFile(full, 'utf8').catch(() => null);
       if (onDisk !== content) {
         await fs.promises.mkdir(path.dirname(full), { recursive: true });
@@ -215,7 +228,8 @@ export class Shell {
       }
     }
     for (const rel of previous.keys()) {
-      if (!files.has(rel)) await fs.promises.rm(path.join(dir, rel), { force: true });
+      const full = inside(dir, rel);
+      if (full && !files.has(rel)) await fs.promises.rm(full, { force: true });
     }
     await pruneEmptyDirs(dir, dir, folders);
     await this.saveManifest(roomId, files);
@@ -324,11 +338,13 @@ export class Shell {
   }
 
   hasFile(roomId, cwd, name) {
-    return fs.existsSync(path.join(this.dir(roomId), cwd || '', name));
+    const full = inside(this.dir(roomId), path.join(cwd || '', name));
+    return !!full && fs.existsSync(full);
   }
 
   removeFile(roomId, cwd, name) {
-    fs.rmSync(path.join(this.dir(roomId), cwd || '', name), { force: true });
+    const full = inside(this.dir(roomId), path.join(cwd || '', name));
+    if (full) fs.rmSync(full, { force: true });
   }
 
   /** Resolves `cd <target>` from cwd (both relative to the workspace). Null when outside it. */
