@@ -122,3 +122,25 @@ test('after a refused change, the same person can keep editing (owner-only files
   assert.equal(editor.doc.getMap('nodes').get('f-new'), undefined, 'the refused file stays on the editor screen');
   assert.equal(owner.doc.getMap('texts').get('f-main').toString(), 'hello world');
 });
+
+test('code runs cannot reach the network (import, require, getBuiltinModule, fetch, WebSocket)', async () => {
+  const { runJavaScript } = await import('../src/runner.js');
+  const attempts = [
+    "import net from 'node:net'; console.log('OP' + 'EN')",
+    "await import('node:http'); console.log('OP' + 'EN')",
+    "import { createRequire } from 'node:module'; createRequire(import.meta.url)('https'); console.log('OP' + 'EN')",
+    "process.getBuiltinModule('node:dgram'); console.log('OP' + 'EN')",
+    "await fetch('http://127.0.0.1:1/'); console.log('OP' + 'EN')",
+    "new WebSocket('ws://127.0.0.1:1/'); console.log('OP' + 'EN')",
+    "process.binding('tcp_wrap'); console.log('OP' + 'EN')",
+  ];
+  for (const code of attempts) {
+    let out = '';
+    const res = await runJavaScript({ code, onOutput: (_s, chunk) => (out += chunk) }).promise;
+    assert.notEqual(res.exitCode, 0, code);
+    assert.doesNotMatch(out, /OPEN/, code);
+  }
+  let ok = '';
+  await runJavaScript({ code: "import path from 'node:path'; console.log(path.posix.join('a', 'b'))", onOutput: (_s, c) => (ok += c) }).promise;
+  assert.match(ok, /a\/b/);
+});

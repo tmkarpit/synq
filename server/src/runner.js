@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Code execution for shared runs.
 //
@@ -21,6 +22,27 @@ export const STDIN_CAP = 16 * 1024;
 
 const IS_WIN = process.platform === 'win32';
 const PERMISSION_FLAG = process.allowedNodeEnvironmentFlags.has('--permission') ? '--permission' : '--experimental-permission';
+
+// Node's permission model has no switch for the network, so this preload (loaded with
+// --import before the program) refuses the network modules on every way in (import,
+// require, process.getBuiltinModule) and removes fetch / WebSocket. Without it a run could
+// reach the SYNQ server, the database or other machines on the network.
+const NETWORK_MODULES = ['net', 'http', 'https', 'http2', 'tls', 'dgram', 'dns', 'dns/promises', 'inspector', 'inspector/promises', 'cluster'];
+const NETWORK_BLOCK = `
+import { registerHooks } from 'node:module';
+const blocked = new Set(${JSON.stringify(NETWORK_MODULES)});
+const isBlocked = (id) => blocked.has(String(id).replace(/^node:/, ''));
+const refuse = (id) => Object.assign(new Error('Network access is not available in SYNQ runs (' + id + ').'), { code: 'ERR_ACCESS_DENIED' });
+registerHooks({ resolve(specifier, context, next) { if (isBlocked(specifier)) throw refuse(specifier); return next(specifier, context); } });
+const builtin = process.getBuiltinModule;
+Object.defineProperty(process, 'getBuiltinModule', { value: (id) => { if (isBlocked(id)) throw refuse(id); return builtin(id); }, writable: false, configurable: false });
+Object.defineProperty(process, 'binding', { value: () => { throw refuse('process.binding'); }, writable: false, configurable: false });
+for (const name of ['fetch', 'WebSocket', 'EventSource']) Object.defineProperty(globalThis, name, { value: function blocked() { throw refuse(name); }, writable: false, configurable: false });
+`;
+// Written once per server start; the sandbox may read exactly this file and nothing else.
+const NETWORK_BLOCK_FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'synq-runner-')), 'network-block.mjs');
+fs.writeFileSync(NETWORK_BLOCK_FILE, `${NETWORK_BLOCK.trim()}\n`);
+const NETWORK_BLOCK_URL = pathToFileURL(NETWORK_BLOCK_FILE).href;
 
 // Kept on the first line (no trailing newline) so user line numbers stay correct.
 const JS_PRELUDE =
@@ -133,7 +155,7 @@ export function runFile({ lang, name, code, stdin = '', onOutput, timeoutMs = RU
       try {
         const res = await runProcess({
           cmd: process.execPath,
-          args: [PERMISSION_FLAG, '--max-old-space-size=96', `--input-type=${lang.inputType}`, '-'],
+          args: [PERMISSION_FLAG, `--allow-fs-read=${NETWORK_BLOCK_FILE}`, '--max-old-space-size=96', `--import=${NETWORK_BLOCK_URL}`, `--input-type=${lang.inputType}`, '-'],
           cwd: dir,
           env: { SYNQ_STDIN: input },
           input: JS_PRELUDE + code,
