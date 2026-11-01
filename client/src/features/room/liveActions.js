@@ -2,6 +2,7 @@ import { toast } from 'sonner';
 import { useRoomStore } from '@/store/roomStore';
 import { CLIENT_EVENTS } from '@/services/collab';
 import { pathOf } from '@/services/collab/workspaceDoc';
+import { ENV } from '@/config/app';
 
 export const isHtml = (name = '') => /\.html?$/i.test(name);
 
@@ -27,7 +28,9 @@ export async function openLive(service, fileId) {
     toast.error('Could not go live', { description: res.error });
     return;
   }
-  const url = new URL(res.url, window.location.origin).href;
+  // The preview is served by the SYNQ server: its own address when the site is hosted
+  // separately (VITE_API_URL), otherwise this page's origin.
+  const url = new URL(res.url, ENV.apiUrl || window.location.origin).href;
   if (tab) tab.location.href = url;
   else window.open(url, '_blank');
 }
