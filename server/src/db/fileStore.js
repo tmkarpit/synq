@@ -9,6 +9,7 @@ export class FileStore {
   constructor({ dataDir }) {
     this.dataDir = dataDir;
     this.label = `files in ${dataDir}`;
+    this.ping = async () => {}; // files are always "reachable" (readiness check)
   }
 
   async init() {

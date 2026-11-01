@@ -95,6 +95,13 @@ const shutdown = async () => {
 };
 // A stray failure in one request must not take every room down with it.
 process.on('unhandledRejection', (err) => console.error('[synq] unhandled error:', err?.message || err));
+// A bug that escapes every handler: log it, save what can be saved, and exit so the host
+// (Render) restarts a clean process instead of running on in an unknown state.
+process.on('uncaughtException', async (err) => {
+  console.error('[synq] crashed:', err?.stack || err);
+  await Promise.race([server.close().catch(() => {}), new Promise((r) => setTimeout(r, 5000))]);
+  process.exit(1);
+});
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);

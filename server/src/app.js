@@ -104,9 +104,21 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
   const httpServer = http.createServer(async (req, res) => {
     if (await live.handle(req, res)) return;
     if (accountRoutes && (await accountRoutes(req, res))) return;
-    if (req.method === 'GET' && req.url === '/api/health') {
-      res.writeHead(200, { 'content-type': 'application/json' });
+    // /health: the process is up (Render's health check; never waits for the database, so a
+    // slow database does not get the service restarted). /health/ready: the database answers.
+    const route = req.url.split('?')[0];
+    if (req.method === 'GET' && (route === '/api/health' || route === '/health')) {
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify(production ? { ok: true } : { ok: true, rooms: rooms.rooms.size }));
+      return;
+    }
+    if (req.method === 'GET' && route === '/health/ready') {
+      const ready = await Promise.race([
+        store.ping().then(() => true, () => false),
+        new Promise((r) => setTimeout(() => r(false), 3000).unref()),
+      ]);
+      res.writeHead(ready ? 200 : 503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: ready, database: ready ? 'up' : 'down' }));
       return;
     }
     if (req.method === 'GET' && req.url === '/api/lan') {

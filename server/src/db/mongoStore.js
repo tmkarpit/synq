@@ -154,6 +154,11 @@ export class MongoStore {
     await this.db.collection('rooms').updateOne({ _id: room.id }, { $set: { updateCount: left } });
   }
 
+  /** Throws when the database does not answer (readiness check). */
+  async ping() {
+    await this.db.command({ ping: 1 });
+  }
+
   async close() {
     await this.client.close();
   }

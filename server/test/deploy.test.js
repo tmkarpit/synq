@@ -121,3 +121,26 @@ test('MONGODB_IP_FAMILY picks IPv4 or IPv6 for the database, anything else is ig
   assert.equal(loadConfig({ MONGODB_IP_FAMILY: 'x' }).mongodbFamily, undefined);
   assert.equal(loadConfig({}).mongodbFamily, undefined);
 });
+
+test('/health answers without the database; /health/ready reports whether it is up', async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'synq-test-'));
+  const server = createSynqServer({ dataDir, production: true });
+  const { port } = await server.listen(0, '127.0.0.1');
+  try {
+    const health = await fetch(`http://127.0.0.1:${port}/health`);
+    assert.equal(health.status, 200);
+    assert.deepEqual(await health.json(), { ok: true });
+    const ready = await fetch(`http://127.0.0.1:${port}/health/ready`);
+    assert.equal(ready.status, 200);
+    assert.deepEqual(await ready.json(), { ok: true, database: 'up' });
+    server.store.ping = async () => {
+      throw new Error('database down');
+    };
+    const down = await fetch(`http://127.0.0.1:${port}/health/ready`);
+    assert.equal(down.status, 503);
+    assert.equal((await fetch(`http://127.0.0.1:${port}/health`)).status, 200, '/health must not depend on the database');
+  } finally {
+    await server.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
