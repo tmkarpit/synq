@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 
 // Serves the built client (client/dist) from the SYNQ server, so the website, the API,
 // the sockets and Go Live share one origin: login cookies stay first-party, and no CORS
@@ -24,6 +25,11 @@ const TYPES = {
   wasm: 'application/wasm',
 };
 
+// Text files are sent compressed (Brotli, else gzip): the editor bundle is ~4 MB raw, ~1 MB
+// compressed. Each file is compressed once and kept in memory (the build does not change).
+const COMPRESSIBLE = /\.(html|js|css|json|svg|txt|xml|webmanifest|wasm)$/i;
+const MIN_COMPRESS_BYTES = 1024;
+
 const SECURITY_HEADERS = {
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
@@ -39,10 +45,39 @@ export function createStaticHandler(root, { hsts = false } = {}) {
   if (!fs.existsSync(indexFile)) return null;
   const headers = hsts ? { ...SECURITY_HEADERS, 'strict-transport-security': 'max-age=31536000; includeSubDomains' } : SECURITY_HEADERS;
 
+  const compressed = new Map(); // `${file}|${encoding}` -> Buffer
+  const encodingFor = (req) => {
+    const accepted = String(req.headers['accept-encoding'] || '');
+    if (/\bbr\b/.test(accepted)) return 'br';
+    if (/\bgzip\b/.test(accepted)) return 'gzip';
+    return null;
+  };
+  const compress = (file, encoding) => {
+    const key = `${file}|${encoding}`;
+    if (!compressed.has(key)) {
+      const raw = fs.readFileSync(file);
+      compressed.set(
+        key,
+        encoding === 'br'
+          ? zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 9, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: raw.length } })
+          : zlib.gzipSync(raw, { level: 9 }),
+      );
+    }
+    return compressed.get(key);
+  };
+
   const send = (req, res, file, cache) => {
     const stat = fs.statSync(file);
     const type = TYPES[path.extname(file).slice(1).toLowerCase()] || 'application/octet-stream';
-    res.writeHead(200, { ...headers, 'content-type': type, 'content-length': stat.size, 'cache-control': cache });
+    const common = { ...headers, 'content-type': type, 'cache-control': cache, vary: 'accept-encoding' };
+    const encoding = COMPRESSIBLE.test(file) && stat.size >= MIN_COMPRESS_BYTES ? encodingFor(req) : null;
+    if (encoding) {
+      const body = compress(file, encoding);
+      res.writeHead(200, { ...common, 'content-encoding': encoding, 'content-length': body.length });
+      res.end(req.method === 'HEAD' ? undefined : body);
+      return;
+    }
+    res.writeHead(200, { ...common, 'content-length': stat.size });
     if (req.method === 'HEAD') res.end();
     else fs.createReadStream(file).pipe(res);
   };

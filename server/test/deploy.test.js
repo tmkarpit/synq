@@ -77,3 +77,40 @@ test('the server serves the built website: pages, assets, 404s, no path escapes'
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
 });
+
+test('website files are sent compressed when the browser accepts it', async () => {
+  const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'synq-dist-'));
+  fs.mkdirSync(path.join(dist, 'assets'));
+  fs.writeFileSync(path.join(dist, 'index.html'), '<!doctype html><title>SYNQ</title>');
+  const big = 'console.log("synq");\n'.repeat(5000);
+  fs.writeFileSync(path.join(dist, 'assets', 'big.js'), big);
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'synq-test-'));
+  const server = createSynqServer({ dataDir, staticDir: dist });
+  const { port } = await server.listen(0, '127.0.0.1');
+  const http = await import('node:http');
+  const raw = (encoding) =>
+    new Promise((resolve) => {
+      http.get({ host: '127.0.0.1', port, path: '/assets/big.js', headers: encoding ? { 'accept-encoding': encoding } : {} }, (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => resolve({ headers: res.headers, body: Buffer.concat(chunks) }));
+      });
+    });
+  try {
+    const zlib = await import('node:zlib');
+    const br = await raw('gzip, deflate, br');
+    assert.equal(br.headers['content-encoding'], 'br');
+    assert.ok(br.body.length < big.length / 10);
+    assert.equal(zlib.brotliDecompressSync(br.body).toString(), big);
+    const gz = await raw('gzip');
+    assert.equal(gz.headers['content-encoding'], 'gzip');
+    assert.equal(zlib.gunzipSync(gz.body).toString(), big);
+    const plain = await raw(null);
+    assert.equal(plain.headers['content-encoding'], undefined);
+    assert.equal(plain.body.toString(), big);
+  } finally {
+    await server.close();
+    fs.rmSync(dist, { recursive: true, force: true });
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
