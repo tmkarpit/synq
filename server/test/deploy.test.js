@@ -10,10 +10,12 @@ import { createSynqServer } from '../src/app.js';
 
 test('production turns off the host terminal and native languages unless switched on', () => {
   const prod = loadConfig({ NODE_ENV: 'production' });
+  assert.equal(prod.runEnabled, false, 'running code must be switched on deliberately in production');
   assert.equal(prod.shellEnabled, false);
   assert.deepEqual(prod.runLanguages, ['javascript', 'typescript']);
   assert.equal(prod.corsOrigin, false);
-  const optedIn = loadConfig({ NODE_ENV: 'production', SHELL_ENABLED: 'true', RUN_LANGUAGES: 'python, JavaScript', CORS_ORIGIN: 'https://a.example, https://b.example' });
+  const optedIn = loadConfig({ NODE_ENV: 'production', RUN_ENABLED: 'true', SHELL_ENABLED: 'true', RUN_LANGUAGES: 'python, JavaScript', CORS_ORIGIN: 'https://a.example, https://b.example' });
+  assert.equal(optedIn.runEnabled, true);
   assert.equal(optedIn.shellEnabled, true);
   assert.deepEqual(optedIn.runLanguages, ['python', 'javascript']);
   assert.equal(optedIn.corsOrigin('https://a.example'), true);
@@ -23,6 +25,7 @@ test('production turns off the host terminal and native languages unless switche
 
 test('development keeps every feature on', () => {
   const dev = loadConfig({});
+  assert.equal(dev.runEnabled, true);
   assert.equal(dev.shellEnabled, true);
   assert.equal(dev.runLanguages, null);
   assert.equal(dev.corsOrigin, true);

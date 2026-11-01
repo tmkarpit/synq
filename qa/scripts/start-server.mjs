@@ -18,6 +18,7 @@ const env = {
   // tested (QA_DEV=1 runs in development mode instead).
   ...(process.env.QA_DEV ? {} : {
     NODE_ENV: 'production',
+    RUN_ENABLED: 'true',
     SHELL_ENABLED: 'true',
     RUN_LANGUAGES: 'javascript,typescript,python,c,cpp,java',
     CORS_ORIGIN: 'http://127.0.0.1:5190',

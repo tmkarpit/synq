@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 const CLIENT_DIST = fileURLToPath(new URL('../../client/dist', import.meta.url));
 
 // Server settings from the environment (server/.env, see .env.example), with safe
-// defaults for production: NODE_ENV=production turns off the two features that run
-// commands on the host (the terminal, and Python/C/C++/Java) unless they are switched on
-// on purpose, and only accepts sockets from the site's own origin.
+// defaults for production: NODE_ENV=production turns off running code and the terminal
+// unless they are switched on on purpose (RUN_ENABLED, RUN_LANGUAGES, SHELL_ENABLED), and
+// only accepts requests and sockets from the site's own origin (CLIENT_ORIGINS).
 
 const list = (value) =>
   String(value || '')
@@ -50,7 +50,9 @@ export function loadConfig(env = process.env) {
     // translator with another public address, which MongoDB Atlas' IP access list blocks.
     mongodbFamily: [4, 6].includes(Number(env.MONGODB_IP_FAMILY)) ? Number(env.MONGODB_IP_FAMILY) : undefined,
     jwtSecret: (env.JWT_SECRET || '').trim(),
-    runEnabled: flag(env.RUN_ENABLED, true),
+    // Off by default in production: switch on deliberately (RUN_ENABLED=true), together with
+    // RUN_LANGUAGES (default there: only the sandboxed JavaScript and TypeScript).
+    runEnabled: flag(env.RUN_ENABLED, !production),
     // Empty = every detected toolchain in development, only the sandboxed ones in production.
     runLanguages: languages.length ? languages : production ? SAFE_LANGUAGES : null,
     shellEnabled: flag(env.SHELL_ENABLED, !production),

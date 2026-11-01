@@ -315,7 +315,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
     if (!runEnabled || !lang) {
       const runnable = Object.values(languages).map((l) => l.label).join(', ');
       const why = !runEnabled
-        ? 'Code execution is disabled on this server (RUN_ENABLED=false).'
+        ? 'Running code is turned off on this deployment.'
         : langId
           ? `${languageLabel(langId)} is not available on this server (its compiler/runtime is not installed or not enabled). Runnable here: ${runnable}.`
           : `Files like ${node.name} can't be run. Runnable here: ${runnable}.`;
