@@ -237,3 +237,15 @@ test('one person can create at most 20 new rooms an hour', async () => {
   assert.equal(results.slice(0, 20).filter((r) => r.self?.role === 'owner').length, 20);
   assert.match(results[20].error, /a lot of rooms/);
 });
+
+test('C and C++ compile errors name the file the user wrote, with the line number', async (t) => {
+  const { detectLanguages } = await import('../src/languages.js');
+  const { runFile } = await import('../src/runner.js');
+  const c = detectLanguages().c;
+  if (!c) return t.skip('no C compiler on this machine');
+  let out = '';
+  const res = await runFile({ lang: c, name: 'bad.c', code: 'int main() {\n  int x = ;\n}\n', onOutput: (_s, chunk) => (out += chunk) }).promise;
+  assert.equal(res.phase, 'compile');
+  assert.match(out, /bad\.c:2/);
+  assert.doesNotMatch(out, /main\.c/);
+});

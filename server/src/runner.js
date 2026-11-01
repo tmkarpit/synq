@@ -177,8 +177,11 @@ export function runFile({ lang, name, code, stdin = '', onOutput, timeoutMs = RU
 
       if (lang.compile) {
         const [cmd, args] = lang.compile(file);
-        onOutput('stdout', `$ ${path.basename(cmd)} ${args.join(' ')}\n`);
-        const res = await runProcess({ cmd, args, cwd: dir, env, timeoutMs: COMPILE_TIMEOUT_MS, onOutput, budget });
+        // Compiler messages name the temp file (main.c): show the user's file name instead.
+        const shown = path.basename(String(name || file));
+        const compileOutput = shown === file ? onOutput : (stream, chunk) => onOutput(stream, chunk.split(file).join(shown));
+        compileOutput('stdout', `$ ${path.basename(cmd)} ${args.join(' ')}\n`);
+        const res = await runProcess({ cmd, args, cwd: dir, env, timeoutMs: COMPILE_TIMEOUT_MS, onOutput: compileOutput, budget });
         if (res.code !== 0 || res.timedOut || budget.truncated || budget.cancelled) return finish(res, 'compile');
       }
 
