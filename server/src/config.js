@@ -32,6 +32,9 @@ export function loadConfig(env = process.env) {
     dataDir: env.DATA_DIR || fileURLToPath(new URL('../data', import.meta.url)),
     workspacesDir: env.WORKSPACES_DIR || fileURLToPath(new URL('../workspaces', import.meta.url)),
     mongodbUri: (env.MONGODB_URI || '').trim(),
+    // 4 = reach the database over IPv4 only. Some mobile networks route IPv6 through a
+    // translator with another public address, which MongoDB Atlas' IP access list blocks.
+    mongodbFamily: [4, 6].includes(Number(env.MONGODB_IP_FAMILY)) ? Number(env.MONGODB_IP_FAMILY) : undefined,
     jwtSecret: (env.JWT_SECRET || '').trim(),
     runEnabled: flag(env.RUN_ENABLED, true),
     // Empty = every detected toolchain in development, only the sandboxed ones in production.

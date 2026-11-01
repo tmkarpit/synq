@@ -23,8 +23,9 @@ const ROOM_FILE = /^(synq-[a-z0-9]{4}-[a-z0-9]{4})\.ybin$/;
 const bytes = (data) => (data instanceof Binary ? data.buffer : data);
 
 export class MongoStore {
-  constructor({ uri, dataDir = null, compactEvery = COMPACT_EVERY }) {
-    this.client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
+  /** family: 4 or 6 to reach the database over one IP version only (MONGODB_IP_FAMILY). */
+  constructor({ uri, dataDir = null, compactEvery = COMPACT_EVERY, family = undefined }) {
+    this.client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000, ...(family ? { family } : {}) });
     this.db = this.client.db(); // the database named in the URI (default "test")
     this.dataDir = dataDir;
     this.compactEvery = compactEvery;

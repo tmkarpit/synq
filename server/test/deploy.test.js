@@ -114,3 +114,10 @@ test('website files are sent compressed when the browser accepts it', async () =
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
 });
+
+test('MONGODB_IP_FAMILY picks IPv4 or IPv6 for the database, anything else is ignored', () => {
+  assert.equal(loadConfig({ MONGODB_IP_FAMILY: '4' }).mongodbFamily, 4);
+  assert.equal(loadConfig({ MONGODB_IP_FAMILY: '6' }).mongodbFamily, 6);
+  assert.equal(loadConfig({ MONGODB_IP_FAMILY: 'x' }).mongodbFamily, undefined);
+  assert.equal(loadConfig({}).mongodbFamily, undefined);
+});

@@ -17,7 +17,7 @@ const languages = Object.fromEntries(Object.entries(detectLanguages()).filter(([
 
 // MONGODB_URI=mongodb://localhost:27017/synq stores rooms and accounts in MongoDB (and
 // imports any old .ybin files from DATA_DIR once). Without it, rooms are files in DATA_DIR.
-const store = MONGODB_URI ? new MongoStore({ uri: MONGODB_URI, dataDir: DATA_DIR }) : new FileStore({ dataDir: DATA_DIR });
+const store = MONGODB_URI ? new MongoStore({ uri: MONGODB_URI, dataDir: DATA_DIR, family: config.mongodbFamily }) : new FileStore({ dataDir: DATA_DIR });
 // Accounts need the database. JWT_SECRET (32+ random characters) signs the access
 // tokens; COOKIE_SECURE=true when the site is served over HTTPS.
 if (MONGODB_URI && JWT_SECRET.length < 32) {
