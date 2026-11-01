@@ -5,6 +5,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { OtpError, Verifier } from './otp.js';
 import { GitHubError } from './github.js';
 import { accountMember } from './permissions.js';
+import { clientIp } from './config.js';
 
 // Accounts: stored in MongoDB (users, refresh_tokens, login_history; see db/mongoStore.js).
 //
@@ -518,7 +519,7 @@ async function readJson(req) {
  *   POST /api/github/token { token } (Bearer)          -> { login } (checked with GitHub, stored encrypted)
  *   DELETE /api/github/token (Bearer)                  -> { connected: false }
  */
-export function createAccountRoutes(accounts, github = null) {
+export function createAccountRoutes(accounts, github = null, { trustProxy = 0 } = {}) {
   const send = (res, status, data, cookie) => {
     res.writeHead(status, {
       'content-type': 'application/json',
@@ -542,12 +543,10 @@ export function createAccountRoutes(accounts, github = null) {
     const path = req.url.split('?')[0];
     if (!path.startsWith('/api/auth/') && path !== '/api/rooms' && !(github && (path === '/api/github' || path === '/api/github/token'))) return false;
     const refreshToken = readCookie(req.headers.cookie);
-    const ip = req.socket.remoteAddress;
-    // Through the Vite dev proxy every request comes from this machine; the proxy passes the
-    // real address on. Only trusted from a local proxy, since anyone can send the header.
-    const forwarded = /^(127\.|::1$|::ffff:127\.)/.test(ip || '') ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '';
-    const log = (entry) =>
-      accounts.record({ ip: forwarded || ip || null, userAgent: String(req.headers['user-agent'] || '').slice(0, 300) || null, ...entry });
+    // The real client address (behind TRUST_PROXY proxies, or the Vite dev proxy), so rate
+    // limits are per person rather than one shared limit for everyone behind a proxy.
+    const ip = clientIp(req.socket.remoteAddress, req.headers['x-forwarded-for'], trustProxy);
+    const log = (entry) => accounts.record({ ip: ip || null, userAgent: String(req.headers['user-agent'] || '').slice(0, 300) || null, ...entry });
     let body = null;
     try {
       if (req.method === 'GET' && path === '/api/auth/config') {

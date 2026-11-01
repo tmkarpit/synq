@@ -13,6 +13,7 @@ import { createAccountRoutes } from './accounts.js';
 import { LiveServer } from './live.js';
 import { GitHubError } from './github.js';
 import { restoreTree, snapshotTree, treeUpdateError } from './tree.js';
+import { createStaticHandler } from './static.js';
 
 // Implements docs/SOCKET_EVENTS.md. One Socket.IO room per SYNQ room.
 
@@ -47,8 +48,11 @@ export function lanAddresses() {
  * languages: map from languages.js (detected toolchains). Pass a subset to restrict.
  * shell: shell.js. When set, terminal commands run in a folder per room (who may is a
  * room setting); without it the terminal only has its built-in commands.
+ * staticDir: the built client to serve (one origin for site, API and sockets).
+ * trustProxy: proxies in front of the server (config.js clientIp).
+ * production: hides details (open rooms, LAN addresses) from public endpoints.
  */
-export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), accounts = null, github = null, shell = null, corsOrigin = true, runEnabled = true, languages = detectLanguages(), runner = runFile } = {}) {
+export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), accounts = null, github = null, shell = null, corsOrigin = true, runEnabled = true, languages = detectLanguages(), runner = runFile, staticDir = null, trustProxy = 0, production = false } = {}) {
   let io = null;
   // Every save (debounced autosave or a manual room:save) tells the room, so clients can
   // clear their "unsaved" markers.
@@ -60,19 +64,21 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
   // "Go Live": previews of the room's HTML at /live/<token>/... that reload on every change.
   const live = new LiveServer({ getRoom: (id) => rooms.get(id), releaseRoom: (room) => rooms.release(room), shell });
 
-  const accountRoutes = accounts ? createAccountRoutes(accounts, github) : null;
+  const accountRoutes = accounts ? createAccountRoutes(accounts, github, { trustProxy }) : null;
+  const site = staticDir ? createStaticHandler(staticDir, { hsts: production }) : null;
+  if (staticDir && !site) console.warn(`[synq] STATIC_DIR has no index.html (${staticDir}); run "npm run build" in client/.`);
 
   const httpServer = http.createServer(async (req, res) => {
     if (await live.handle(req, res)) return;
     if (accountRoutes && (await accountRoutes(req, res))) return;
     if (req.method === 'GET' && req.url === '/api/health') {
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, rooms: rooms.rooms.size }));
+      res.end(JSON.stringify(production ? { ok: true } : { ok: true, rooms: rooms.rooms.size }));
       return;
     }
     if (req.method === 'GET' && req.url === '/api/lan') {
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ addresses: lanAddresses() }));
+      res.end(JSON.stringify({ addresses: production ? [] : lanAddresses() }));
       return;
     }
     if (req.method === 'GET' && req.url === '/api/runtimes') {
@@ -85,6 +91,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       );
       return;
     }
+    if (site && site(req, res)) return;
     res.writeHead(404).end();
   });
 
