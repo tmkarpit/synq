@@ -12,7 +12,7 @@
     "test:db": "node --env-file-if-exists=.env --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.15"
   },
   "dependencies": {
     "acorn": "^8.19.0",

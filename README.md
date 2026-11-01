@@ -98,6 +98,37 @@ In a second terminal, start the client
 
 Open http://localhost:5173 in your browser
 
+## Deploy
+
+SYNQ runs as one Node.js service: the server also serves the website, so the site, API,
+WebSockets and Go Live share one address. Use a host that keeps WebSockets open (Render,
+Railway, Fly.io, a VPS) and a MongoDB database (MongoDB Atlas works).
+
+With Docker
+
+```bash
+  docker build --build-arg SITE_URL=https://your-domain.com -t synq .
+  docker run -p 4000:4000 --env-file server/.env -e NODE_ENV=production synq
+```
+
+Without Docker (Node.js 22.15 or newer): set `NODE_ENV=production` in `server/.env`, then
+
+```bash
+  npm run install:all
+  SITE_URL=https://your-domain.com npm start
+```
+
+For production, set in `server/.env`: `MONGODB_URI`, `JWT_SECRET`, `COOKIE_SECURE=true`
+(HTTPS), `TRUST_PROXY=1` when behind a load balancer, and the email settings
+(`SMTP_*`) so people can sign up. `SITE_URL` (at build time) adds the canonical link,
+link-preview image and `sitemap.xml`.
+
+In production the terminal and Python/C/C++/Java are off by default, because they run
+on the server without a sandbox; JavaScript and TypeScript run sandboxed (no files,
+processes or network). Turn the others on with `SHELL_ENABLED=true` and `RUN_LANGUAGES`
+only inside a container and for people you trust. See `server/.env.example` for every
+setting.
+
 ## Contributing
 
 Contributions are always welcome!

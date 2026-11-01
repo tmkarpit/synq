@@ -1,4 +1,7 @@
+import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+
+const CLIENT_DIST = fileURLToPath(new URL('../../client/dist', import.meta.url));
 
 // Server settings from the environment (server/.env, see .env.example), with safe
 // defaults for production: NODE_ENV=production turns off the two features that run
@@ -40,8 +43,8 @@ export function loadConfig(env = process.env) {
     // X-Forwarded-For entries tell the real client address for rate limits.
     trustProxy: Math.max(0, Number(env.TRUST_PROXY) || 0),
     // The built client (client/dist) to serve from this server, so the site, the API and
-    // the sockets share one origin.
-    staticDir: (env.STATIC_DIR || '').trim() || null,
+    // the sockets share one origin. In production it is found by itself after a build.
+    staticDir: (env.STATIC_DIR || '').trim() || (production && fs.existsSync(CLIENT_DIST) ? CLIENT_DIST : null),
     cookieSecure: env.COOKIE_SECURE === 'true',
   };
 }
