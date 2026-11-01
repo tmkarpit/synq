@@ -32,6 +32,7 @@ const accounts = MONGODB_URI
       db: store.db,
       secret: JWT_SECRET,
       secureCookies: config.cookieSecure,
+      sameSite: config.cookieSameSite,
       sender,
       googleClientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
       defaultCountry: process.env.DEFAULT_COUNTRY_CODE || '91',

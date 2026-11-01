@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { clientIp, loadConfig } from '../src/config.js';
+import { clientIp, loadConfig, originPolicy } from '../src/config.js';
 import { createSynqServer } from '../src/app.js';
 
 // Production settings and serving the website from the SYNQ server (one origin).
@@ -16,7 +16,9 @@ test('production turns off the host terminal and native languages unless switche
   const optedIn = loadConfig({ NODE_ENV: 'production', SHELL_ENABLED: 'true', RUN_LANGUAGES: 'python, JavaScript', CORS_ORIGIN: 'https://a.example, https://b.example' });
   assert.equal(optedIn.shellEnabled, true);
   assert.deepEqual(optedIn.runLanguages, ['python', 'javascript']);
-  assert.deepEqual(optedIn.corsOrigin, ['https://a.example', 'https://b.example']);
+  assert.equal(optedIn.corsOrigin('https://a.example'), true);
+  assert.equal(optedIn.corsOrigin('https://b.example'), true);
+  assert.equal(optedIn.corsOrigin('https://evil.example'), false);
 });
 
 test('development keeps every feature on', () => {
@@ -143,4 +145,51 @@ test('/health answers without the database; /health/ready reports whether it is 
     await server.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
+});
+
+test('allowed origins: exact list without trailing slashes, and only your own Vercel previews', () => {
+  const allow = loadConfig({ NODE_ENV: 'production', CLIENT_ORIGINS: 'https://synq.vercel.app/, https://synq.example.com', VERCEL_PREVIEW_PROJECT: 'synq' }).corsOrigin;
+  assert.equal(allow('https://synq.vercel.app'), true);
+  assert.equal(allow('https://synq.example.com'), true);
+  assert.equal(allow('https://synq-git-main-arpit.vercel.app'), true);
+  assert.equal(allow('https://synq-abc123-arpit.vercel.app'), true);
+  assert.equal(allow('https://other-app.vercel.app'), false, "another person's Vercel app");
+  assert.equal(allow('https://synq.vercel.app.evil.com'), false);
+  assert.equal(allow('http://synq.vercel.app'), false, 'plain http');
+  assert.equal(originPolicy({ production: true }), false);
+  assert.equal(originPolicy({ production: false }), true);
+  assert.equal(loadConfig({ CORS_ORIGIN: 'https://old.example' }).corsOrigin('https://old.example'), true, 'CORS_ORIGIN still works');
+});
+
+test('the API answers CORS preflights for allowed origins only, with credentials', async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'synq-test-'));
+  const server = createSynqServer({ dataDir, production: true, corsOrigin: (o) => o === 'https://synq.vercel.app' });
+  const { port } = await server.listen(0, '127.0.0.1');
+  const call = (origin, method = 'OPTIONS') =>
+    fetch(`http://127.0.0.1:${port}/api/health`, { method, headers: { origin, 'access-control-request-method': 'POST' } });
+  try {
+    const ok = await call('https://synq.vercel.app');
+    assert.equal(ok.status, 204);
+    assert.equal(ok.headers.get('access-control-allow-origin'), 'https://synq.vercel.app');
+    assert.equal(ok.headers.get('access-control-allow-credentials'), 'true');
+    const evil = await call('https://evil.example', 'GET');
+    assert.equal(evil.headers.get('access-control-allow-origin'), null);
+    const sock = await fetch(`http://127.0.0.1:${port}/socket.io/?EIO=4&transport=polling`, { headers: { origin: 'https://evil.example' } });
+    assert.notEqual(sock.headers.get('access-control-allow-origin'), 'https://evil.example');
+  } finally {
+    await server.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('the login cookie is SameSite=Lax by default; None forces Secure', async () => {
+  const { Accounts } = await import('../src/accounts.js');
+  const secret = 'x'.repeat(40);
+  assert.match(new Accounts({ secret }).cookie('t'), /SameSite=Lax/);
+  const none = new Accounts({ secret, sameSite: 'None' });
+  assert.match(none.cookie('t'), /SameSite=None/);
+  assert.match(none.cookie('t'), /Secure/);
+  assert.match(none.clearCookie(), /SameSite=None; Secure/);
+  assert.equal(loadConfig({ COOKIE_SAMESITE: 'none' }).cookieSameSite, 'None');
+  assert.equal(loadConfig({}).cookieSameSite, 'Lax');
 });

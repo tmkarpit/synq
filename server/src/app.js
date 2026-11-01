@@ -97,11 +97,32 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
   // "Go Live": previews of the room's HTML at /live/<token>/... that reload on every change.
   const live = new LiveServer({ getRoom: (id) => rooms.get(id), releaseRoom: (room) => rooms.release(room), shell });
 
+  // corsOrigin: true (any), false (same origin only), a list, or a function (config.js).
+  const isAllowed = (origin) =>
+    typeof corsOrigin === 'function' ? corsOrigin(origin) : Array.isArray(corsOrigin) ? corsOrigin.includes(origin) : corsOrigin === true;
+  const allowOrigin = (origin, callback) => callback(null, !origin || isAllowed(origin));
+
   const accountRoutes = accounts ? createAccountRoutes(accounts, github, { trustProxy }) : null;
   const site = staticDir ? createStaticHandler(staticDir, { hsts: production }) : null;
   if (staticDir && !site) console.warn(`[synq] STATIC_DIR has no index.html (${staticDir}); run "npm run build" in client/.`);
 
   const httpServer = http.createServer(async (req, res) => {
+    // CORS for the API when the site is on another origin (CLIENT_ORIGINS, config.js).
+    const origin = req.headers.origin;
+    if (origin && req.url.startsWith('/api/') && isAllowed(origin)) {
+      res.setHeader('access-control-allow-origin', origin);
+      res.setHeader('access-control-allow-credentials', 'true');
+      res.setHeader('vary', 'Origin');
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+          'access-control-allow-headers': 'content-type, authorization',
+          'access-control-max-age': '600',
+        });
+        res.end();
+        return;
+      }
+    }
     if (await live.handle(req, res)) return;
     if (accountRoutes && (await accountRoutes(req, res))) return;
     // /health: the process is up (Render's health check; never waits for the database, so a
@@ -141,7 +162,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
   });
 
   io = new Server(httpServer, {
-    cors: { origin: corsOrigin },
+    cors: { origin: allowOrigin, credentials: true },
     maxHttpBufferSize: MAX_UPDATE_BYTES,
   });
 

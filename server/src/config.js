@@ -21,10 +21,24 @@ const flag = (value, fallback) => {
 
 export const SAFE_LANGUAGES = ['javascript', 'typescript'];
 
+/**
+ * Which browser origins may call the API and open sockets: true (any, development),
+ * false (same origin only), or a function of the Origin header. CLIENT_ORIGINS lists
+ * exact origins; VERCEL_PREVIEW_PROJECT=<name> also allows that project's Vercel preview
+ * deployments (https://<name>-<hash>-<team>.vercel.app), and nobody else's.
+ */
+export function originPolicy({ origins = [], vercelProject = '', production = false } = {}) {
+  const exact = new Set(origins.map((o) => o.replace(/\/+$/, '')));
+  const project = vercelProject.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+  const preview = project ? new RegExp(`^https://${project}(-[a-z0-9-]+)?\\.vercel\\.app$`) : null;
+  if (!exact.size && !preview) return !production;
+  return (origin) => exact.has(origin) || (preview ? preview.test(origin) : false);
+}
+
 export function loadConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
   const languages = list(env.RUN_LANGUAGES).map((s) => s.toLowerCase());
-  const origins = list(env.CORS_ORIGIN);
+  const origins = list(env.CLIENT_ORIGINS || env.CORS_ORIGIN);
   return {
     production,
     port: Number(env.PORT) || 4000,
@@ -40,8 +54,13 @@ export function loadConfig(env = process.env) {
     // Empty = every detected toolchain in development, only the sandboxed ones in production.
     runLanguages: languages.length ? languages : production ? SAFE_LANGUAGES : null,
     shellEnabled: flag(env.SHELL_ENABLED, !production),
-    // Socket.IO origins. Production without CORS_ORIGIN: same origin only (false).
-    corsOrigin: origins.length ? origins : production ? false : true,
+    // Origins allowed to use the API and sockets (originPolicy). Production without any:
+    // same origin only.
+    corsOrigin: originPolicy({ origins, vercelProject: env.VERCEL_PREVIEW_PROJECT || '', production }),
+    // lax (default): the site and the API share an origin (one service, or a Vercel rewrite).
+    // none: the site calls the API on another domain directly (needs HTTPS; Safari and
+    // browsers that block third-party cookies will still log people out on reload).
+    cookieSameSite: String(env.COOKIE_SAMESITE || '').toLowerCase() === 'none' ? 'None' : 'Lax',
     // How many proxies (load balancer, CDN) sit in front of the server: their
     // X-Forwarded-For entries tell the real client address for rate limits.
     trustProxy: Math.max(0, Number(env.TRUST_PROXY) || 0),

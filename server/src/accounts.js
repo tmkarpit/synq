@@ -67,7 +67,7 @@ export class Accounts {
    * verifyGoogle: (credential) => Google ID token payload; tests replace it.
    * defaultCountry: dialling code for numbers typed without one (DEFAULT_COUNTRY_CODE).
    */
-  constructor({ db, secret, secureCookies = false, sender = null, googleClientId = '', verifyGoogle = null, defaultCountry = '91' }) {
+  constructor({ db, secret, secureCookies = false, sameSite = 'Lax', sender = null, googleClientId = '', verifyGoogle = null, defaultCountry = '91' }) {
     if (!secret || secret.length < 32) throw new Error('JWT_SECRET must be at least 32 characters.');
     if (secret.startsWith('change-me')) throw new Error('JWT_SECRET is still the example value. Set your own random secret.');
     this.users = db?.collection('users');
@@ -75,7 +75,9 @@ export class Accounts {
     this.rooms = db?.collection('rooms');
     this.history = db?.collection('login_history');
     this.secret = secret;
-    this.secureCookies = secureCookies;
+    this.sameSite = sameSite === 'None' ? 'None' : 'Lax';
+    // SameSite=None is only accepted on Secure cookies.
+    this.secureCookies = secureCookies || this.sameSite === 'None';
     this.attempts = new Map(); // ip|email -> { count, until }
     this.sender = sender;
     this.otp = new Verifier({ db, secret, sender });
@@ -465,13 +467,13 @@ export class Accounts {
   /* ------------------------------------------------------------ cookie */
 
   cookie(token) {
-    const parts = [`${REFRESH_COOKIE}=${token}`, 'Path=/api/auth', 'HttpOnly', 'SameSite=Lax', `Max-Age=${REFRESH_DAYS * 86400}`];
+    const parts = [`${REFRESH_COOKIE}=${token}`, 'Path=/api/auth', 'HttpOnly', `SameSite=${this.sameSite}`, `Max-Age=${REFRESH_DAYS * 86400}`];
     if (this.secureCookies) parts.push('Secure');
     return parts.join('; ');
   }
 
   clearCookie() {
-    return `${REFRESH_COOKIE}=; Path=/api/auth; HttpOnly; SameSite=Lax; Max-Age=0`;
+    return `${REFRESH_COOKIE}=; Path=/api/auth; HttpOnly; SameSite=${this.sameSite}${this.secureCookies ? '; Secure' : ''}; Max-Age=0`;
   }
 }
 
