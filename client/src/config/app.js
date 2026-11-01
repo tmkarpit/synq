@@ -11,7 +11,9 @@ export const APP = Object.freeze({
 });
 
 const socketUrl = (import.meta.env.VITE_SOCKET_URL || '').trim();
-const useMockFlag = String(import.meta.env.VITE_USE_MOCK ?? 'true').toLowerCase() === 'true';
+// The offline demo (mock collaboration) is the default only in development: a production
+// build without VITE_USE_MOCK talks to the real server.
+const useMockFlag = String(import.meta.env.VITE_USE_MOCK ?? (import.meta.env.DEV ? 'true' : 'false')).toLowerCase() === 'true';
 
 export const ENV = Object.freeze({
   // Empty = same origin (the Vite dev server proxies /socket.io and /api to the SYNQ server).
