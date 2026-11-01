@@ -48,9 +48,17 @@ async function post(path, body = {}) {
   } catch {
     throw Object.assign(new Error("Can't reach the SYNQ server. Check that it is running."), {
       status: 0,
+      unreachable: true,
     });
   }
   const data = await res.json().catch(() => ({}));
+  // A 5xx without SYNQ's JSON comes from a proxy or gateway: the server did not answer
+  // (restarting, or the connection dropped), so trying again can work.
+  if (!res.ok && res.status >= 500 && !data.error)
+    throw Object.assign(new Error("The SYNQ server didn't answer. Try again in a moment."), {
+      status: res.status,
+      unreachable: true,
+    });
   if (!res.ok)
     throw Object.assign(new Error(data.error || 'Request failed.'), {
       status: res.status,
@@ -175,7 +183,17 @@ export const useAuthStore = create((set, get) => ({
   },
 
   /** "Continue with Google": credential is the ID token from Google's button. */
-  google: async (credential) => get().signedIn(await post('/api/auth/google', { credential })),
+  // The Google token can be checked more than once, so a dropped connection (server
+  // restarting) is retried once instead of failing the sign-in.
+  google: async (credential) => {
+    try {
+      return get().signedIn(await post('/api/auth/google', { credential }));
+    } catch (err) {
+      if (!err.unreachable) throw err;
+      await new Promise((r) => setTimeout(r, 2000));
+      return get().signedIn(await post('/api/auth/google', { credential }));
+    }
+  },
 
   /** What the server offers (Google client id, email/SMS codes). Cached. */
   config: () => {
