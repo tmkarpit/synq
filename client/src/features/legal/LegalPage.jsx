@@ -38,7 +38,6 @@ const PRIVACY = {
         'Email codes are sent through our email provider; SMS codes through Twilio, when enabled.',
         'Google, when you choose "Continue with Google".',
         'GitHub, only when you push a room to your own repository.',
-        'Judge0 (judge0.com), only when you run Python, C, C++ or Java: it receives that code and its input.',
         'The database and server host that run SYNQ.',
       ],
     ],
@@ -46,7 +45,7 @@ const PRIVACY = {
       'Who can see what',
       [
         'Everyone you admit to a room sees its files, your name, cursor and chat messages in it. The room owner sees the members and pending requests.',
-        'JavaScript and TypeScript you run execute in a sandbox on the SYNQ server. Python, C, C++ and Java are sent to Judge0, a separate code-running service, together with any input you give the program; nothing else about you is sent. Everyone in the room sees the output.',
+        'Code you run (JavaScript and TypeScript) executes in a sandbox on the SYNQ server; it is not sent to any other service. Everyone in the room sees the output.',
       ],
     ],
     [

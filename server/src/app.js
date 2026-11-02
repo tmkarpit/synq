@@ -317,7 +317,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       const why = !runEnabled
         ? 'Running code is turned off on this deployment.'
         : langId
-          ? `${languageLabel(langId)} is not available on this server (its compiler/runtime is not installed or not enabled). Runnable here: ${runnable}.`
+          ? `${languageLabel(langId)} can't run on this site. Runnable here: ${runnable}.`
           : `Files like ${node.name} can't be run. Runnable here: ${runnable}.`;
       io.to(room.id).emit('run:output', { runId: run.runId, stream: 'stdout', chunk: `${why}\n` });
       finish({ exitCode: null, durationMs: 0, skipped: true });
