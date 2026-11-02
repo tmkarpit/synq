@@ -1,6 +1,7 @@
 import { createSynqServer, lanAddresses } from './app.js';
 import { loadConfig } from './config.js';
 import { detectLanguages } from './languages.js';
+import { judge0Languages } from './judge0.js';
 import { FileStore } from './db/fileStore.js';
 import { MongoStore } from './db/mongoStore.js';
 import { Accounts } from './accounts.js';
@@ -13,7 +14,12 @@ const { port: PORT, host: HOST, dataDir: DATA_DIR, mongodbUri: MONGODB_URI, jwtS
 
 // RUN_LANGUAGES=javascript,typescript,python,c,cpp,java (default: every detected toolchain;
 // in production only the sandboxed JavaScript and TypeScript).
-const languages = Object.fromEntries(Object.entries(detectLanguages()).filter(([id]) => !config.runLanguages || config.runLanguages.includes(id)));
+const localLanguages = Object.fromEntries(Object.entries(detectLanguages()).filter(([id]) => !config.runLanguages || config.runLanguages.includes(id)));
+// With JUDGE0_API_KEY, Python/C/C++/Java run on Judge0 (replacing any local toolchain).
+const languages = {
+  ...localLanguages,
+  ...judge0Languages({ ...config.judge0, languages: config.judge0.languages.length ? config.judge0.languages : undefined }),
+};
 
 // MONGODB_URI=mongodb://localhost:27017/synq stores rooms and accounts in MongoDB (and
 // imports any old .ybin files from DATA_DIR once). Without it, rooms are files in DATA_DIR.
@@ -80,7 +86,7 @@ console.log(`  terminal shell:   ${shell ? `on, in ${config.workspacesDir} (who 
 if (!config.runEnabled) console.log('  code execution:   off');
 else {
   console.log('  code execution:');
-  Object.values(languages).forEach((l) => console.log(`    ${l.label.padEnd(11)} ${l.tool}${l.kind === 'node' ? '  [sandboxed]' : ''}`));
+  Object.values(languages).forEach((l) => console.log(`    ${l.label.padEnd(11)} ${l.tool}${l.kind === 'node' ? '  [sandboxed]' : l.kind === 'remote' ? '  [remote sandbox]' : ''}`));
   if (Object.values(languages).some((l) => l.kind === 'native')) {
     console.log('  WARNING: Python/C/C++/Java run with YOUR user permissions (no sandbox).');
     console.log('           Only invite people you trust, or set RUN_LANGUAGES / RUN_ENABLED=false.');

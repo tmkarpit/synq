@@ -139,6 +139,8 @@ async function removeDir(dir) {
  * @returns {{ promise: Promise<{exitCode, durationMs, timedOut, truncated, phase}>, cancel(): void }}
  */
 export function runFile({ lang, name, code, stdin = '', onOutput, timeoutMs = RUN_TIMEOUT_MS, outputCap = RUN_OUTPUT_CAP }) {
+  // Languages run by a remote sandbox (judge0.js) never touch this machine.
+  if (lang.kind === 'remote') return lang.run({ name, code, stdin, onOutput, timeoutMs, outputCap });
   const budget = { bytes: 0, cap: outputCap, truncated: false, kill: null, cancelled: false };
   const input = String(stdin).slice(0, STDIN_CAP);
   const startedAt = Date.now();

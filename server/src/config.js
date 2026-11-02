@@ -56,6 +56,12 @@ export function loadConfig(env = process.env) {
     // Empty = every detected toolchain in development, only the sandboxed ones in production.
     runLanguages: languages.length ? languages : production ? SAFE_LANGUAGES : null,
     shellEnabled: flag(env.SHELL_ENABLED, !production),
+    // Python, C, C++ and Java on Judge0's sandbox instead of this server (judge0.js).
+    judge0: {
+      key: (env.JUDGE0_API_KEY || '').trim(),
+      url: (env.JUDGE0_URL || '').trim() || undefined,
+      languages: list(env.JUDGE0_LANGUAGES).map((s) => s.toLowerCase()),
+    },
     // Origins allowed to use the API and sockets (originPolicy). Production without any:
     // same origin only.
     corsOrigin: originPolicy({ origins, vercelProject: env.VERCEL_PREVIEW_PROJECT || '', production }),

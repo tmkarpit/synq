@@ -152,7 +152,7 @@ export function createSynqServer({ dataDir, store = new FileStore({ dataDir }), 
       res.end(
         JSON.stringify({
           enabled: runEnabled,
-          languages: Object.entries(languages).map(([id, l]) => ({ id, label: l.label, tool: l.tool, sandboxed: l.kind === 'node' })),
+          languages: Object.entries(languages).map(([id, l]) => ({ id, label: l.label, tool: l.tool, sandboxed: l.kind !== 'native' })),
         }),
       );
       return;
