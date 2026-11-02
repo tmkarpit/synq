@@ -29,10 +29,7 @@ and no sending files back and forth.
 
 ## Demo
 
-There's no hosted version yet. Follow [Run Locally](#run-locally) below.
-
-To just look around without setting up a database, start the client in demo mode with
-`VITE_USE_MOCK=true`. It opens a sample room with two simulated teammates.
+https://synq-together.vercel.app/
 
 
 ## Screenshots
