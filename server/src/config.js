@@ -56,6 +56,15 @@ export function loadConfig(env = process.env) {
     // Empty = every detected toolchain in development, only the sandboxed ones in production.
     runLanguages: languages.length ? languages : production ? SAFE_LANGUAGES : null,
     shellEnabled: flag(env.SHELL_ENABLED, !production),
+    // Python, C, C++ and Java on JDoodle's free compiler API instead of this server (jdoodle.js).
+    jdoodle: {
+      clientId: (env.JDOODLE_CLIENT_ID || '').trim(),
+      clientSecret: (env.JDOODLE_CLIENT_SECRET || '').trim(),
+      url: (env.JDOODLE_URL || '').trim() || undefined,
+      languages: list(env.JDOODLE_LANGUAGES).map((s) => s.toLowerCase()),
+      // "python:4,cpp:1": override JDoodle version indexes.
+      versions: Object.fromEntries(list(env.JDOODLE_VERSIONS).map((pair) => pair.split(':').map((s) => s.trim().toLowerCase()))),
+    },
     // Python, C, C++ and Java on Judge0's sandbox instead of this server (judge0.js).
     judge0: {
       key: (env.JUDGE0_API_KEY || '').trim(),

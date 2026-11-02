@@ -38,9 +38,11 @@ services:
         value: javascript,typescript
       - key: SHELL_ENABLED
         value: "false"
-      # Python, C, C++ and Java run on Judge0's sandbox (RapidAPI > Judge0 CE > your key),
-      # never on this server. Leave empty to offer only JavaScript and TypeScript.
-      - key: JUDGE0_API_KEY
+      # Python, C, C++ and Java run on JDoodle's free compiler API (jdoodle.com/compiler-api,
+      # no card; about 20 runs a day), never on this server. Empty = JavaScript/TypeScript only.
+      - key: JDOODLE_CLIENT_ID
+        sync: false
+      - key: JDOODLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false

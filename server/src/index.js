@@ -2,6 +2,7 @@ import { createSynqServer, lanAddresses } from './app.js';
 import { loadConfig } from './config.js';
 import { detectLanguages } from './languages.js';
 import { judge0Languages } from './judge0.js';
+import { jdoodleLanguages } from './jdoodle.js';
 import { FileStore } from './db/fileStore.js';
 import { MongoStore } from './db/mongoStore.js';
 import { Accounts } from './accounts.js';
@@ -15,10 +16,13 @@ const { port: PORT, host: HOST, dataDir: DATA_DIR, mongodbUri: MONGODB_URI, jwtS
 // RUN_LANGUAGES=javascript,typescript,python,c,cpp,java (default: every detected toolchain;
 // in production only the sandboxed JavaScript and TypeScript).
 const localLanguages = Object.fromEntries(Object.entries(detectLanguages()).filter(([id]) => !config.runLanguages || config.runLanguages.includes(id)));
-// With JUDGE0_API_KEY, Python/C/C++/Java run on Judge0 (replacing any local toolchain).
+// With JDOODLE_CLIENT_ID/SECRET or JUDGE0_API_KEY, Python/C/C++/Java run on that remote
+// sandbox (replacing any local toolchain; Judge0 wins if both are set).
+const pick = (list) => (list.length ? list : undefined);
 const languages = {
   ...localLanguages,
-  ...judge0Languages({ ...config.judge0, languages: config.judge0.languages.length ? config.judge0.languages : undefined }),
+  ...jdoodleLanguages({ ...config.jdoodle, languages: pick(config.jdoodle.languages) }),
+  ...judge0Languages({ ...config.judge0, languages: pick(config.judge0.languages) }),
 };
 
 // MONGODB_URI=mongodb://localhost:27017/synq stores rooms and accounts in MongoDB (and
